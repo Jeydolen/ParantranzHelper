@@ -11,20 +11,20 @@ const fs = require("node:fs/promises");
 // ░╚════╝░░╚════╝░╚═╝░░╚══╝╚═╝░░░░░╚═╝░╚═════╝░░╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚══╝
 
 // API Key Paratranz
-const pt_api_key = "";
+const paratranz_api_key = "";
 // Paratranz API endpoint
-const pt_api_endpoint = "https://paratranz.cn/api";
+const paratranz_api_endpoint = "https://paratranz.cn/api";
 
 // Change this if you don't want to type your project id everytime
-let pt_project_id = 6833;
+let paratranz_project_id;
 
 // API Key DeepL
-const dl_api_key = "";
+const deepl_api_key = "";
 // DeepL API endpoint
-const dl_api_endpoint = "https://api-free.deepl.com/v2";
+const deepl_api_endpoint = "https://api-free.deepl.com/v2";
 
 // CK3 Original game path
-const game_path = "C:/Games/Crusader Kings III";
+const game_path = "";
 
 // Must be a language available in original game localization folder
 const language = "french";
@@ -50,20 +50,17 @@ if (process.version.split(".")[0] < "18") {
     console.warn("Warning! Your node version might need to install some modules to be able to work correctly (eg: fetch)");
 }
 
-const deepL_enabled = !(typeof dl_api_key !== "string" || dl_api_key.length === 0);
+const deepL_enabled = !(typeof deepl_api_key !== "string" || deepl_api_key.length === 0);
 const checkStartupConfiguration = () => {
-    if (typeof pt_api_key !== "string" 
-    || typeof game_path !== "string" 
-    || typeof pt_api_endpoint !== "string"
-    || pt_api_key.length === 0 
-    || game_path.length === 0 
-    || pt_api_endpoint.length === 0) {
-        console.error("Error ! You have to set your game path, your paratranz api key and the paratranz api endpoint.");
+    if (typeof paratranz_api_key !== "string" 
+    || typeof paratranz_api_endpoint !== "string"
+    || paratranz_api_key.length === 0 
+    || paratranz_api_endpoint.length === 0) {
+        console.error("Error ! You have to set your paratranz api key and the paratranz api endpoint.");
         process.exit(1);
     }
 
-
-    const pid = pt_project_id;
+    const pid = paratranz_project_id;
     if ((pid !== undefined && (typeof pid !== "string" && typeof pid !== "number"))) {
         console.error("Error ! Value for pt_project_id must be either undefined, a string, or a valid number.");
         process.exit(2);
@@ -72,6 +69,19 @@ const checkStartupConfiguration = () => {
     if (file_blacklist === undefined || ! Array.isArray(file_blacklist)) {
         console.error("Error ! file_blacklist must be an array.")
         process.exit(3);
+    }
+
+    if (use_game_files === true 
+    && typeof game_path !== "string" 
+    || game_path.length === 0) {
+        console.error("Error ! Value for game_path must be a valid Paradox game folder !");
+        process.exit(4);
+    }
+
+    if (! use_game_files) {
+        console.warn(`Warning ! You disabled access to your game files ! 
+        This might be entirely normal but if that's not the case, 
+        please enable use_game_files and set a valid Paradox game path for game_path.`);
     }
 
     if (! deepL_enabled) {
@@ -86,12 +96,12 @@ const pt_fetch_options = {
     headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': pt_api_key,
+    'Authorization': paratranz_api_key,
   },
 };
 
-const queryApi = (path) => {
-    return fetch(pt_api_endpoint + path, pt_fetch_options)
+const queryParatranzAPI = (path) => {
+    return fetch(paratranz_api_endpoint + path, pt_fetch_options)
         .then(res => res.json());
 };
 
@@ -100,7 +110,7 @@ const putTranslation = (string_id, translation) => {
     put_opt.method = "PUT";
     put_opt.body = JSON.stringify({translation});
     
-    return fetch(pt_api_endpoint + "/projects/" + pt_project_id + "/strings/" + string_id, put_opt );
+    return fetch(paratranz_api_endpoint + "/projects/" + paratranz_project_id + "/strings/" + string_id, put_opt );
 };
 // Paratranz API
 
@@ -108,17 +118,26 @@ const putTranslation = (string_id, translation) => {
 const deepL_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': 'DeepL-Auth-Key ' + dl_api_key,
+    'Authorization': 'DeepL-Auth-Key ' + deepl_api_key,
 };
 
 const getTranslationFromDeepL = async (stringToTranslate) => {
     const deepL_fetch_options = {
         method: "POST",
         headers: deepL_headers,
-        body: JSON.stringify({text: [stringToTranslate], target_lang: language.substring(0, 2).toUpperCase()}),
+        body: JSON.stringify({text: [stringToTranslate], target_lang: "FR"}),
     };
 
-    return fetch(dl_api_endpoint + "/translate", deepL_fetch_options)
+    return fetch(deepl_api_endpoint + "/translate", deepL_fetch_options)
+        .then((res) => {
+            // TODO handle HTTP 429: Too many requests and HTTP 456 Account limit reached
+            if (res.status === 429 || res.status === 456) {
+                print("Error, deepL server limit reached ! Try again later or upgrade to paid plan.");
+                deepL_enabled = false;
+                return undefined;
+            }
+            return res;
+        })
         .then((res) => res.json());
 };
 
@@ -139,13 +158,13 @@ const isFirstAndLastCharacterSame = (string, character) => {
 };
 
 const askPID = async (project_ids) => {
-    if (pt_project_id !== undefined) { return; }
+    if (paratranz_project_id !== undefined) { return; }
 
     const answer = await askQuestion("Project id: ");
     const answerInt = Number.parseInt(answer);
 
     if (! Number.isNaN(answerInt) && project_ids.includes(answerInt)) {
-        pt_project_id = answer;
+        paratranz_project_id = answer;
     } else {
         console.error("This is not a number from the list");
         askPID(project_ids);
@@ -154,13 +173,13 @@ const askPID = async (project_ids) => {
 
 let pageCount = 1;
 const getStringsToTranslate = async (page = 1) => {
-    if (pt_project_id === undefined) {
+    if (paratranz_project_id === undefined) {
         return;
     }
 
     // 1000 is the maximum item count per page
     const itemCount = 1000;
-    const untranslatedStrings = await queryApi("/projects/" + pt_project_id + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
+    const untranslatedStrings = await queryParatranzAPI("/projects/" + paratranz_project_id + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
     pageCount = untranslatedStrings.pageCount;
 
     return untranslatedStrings;
@@ -218,6 +237,10 @@ const getTranslationFromGameFile = async (path, key) => {
     }
 
     if (! path.startsWith("/")) {
+        //Seems like there is some kind of bug
+        // // return;
+        // print("hapends", path)
+        // process.exit()
         path = "/game/localization/english/" + path;
         
     }
@@ -250,7 +273,7 @@ const getTranslationFromGameFile = async (path, key) => {
 };
 
 const validateTranslation = async () => {
-    const ans = await askQuestion("Validation translation ? Y/n\n");
+    const ans = await askQuestion("Valid translation ? Y/n\n");
     const ansLower = ans.toLowerCase();
 
     if (ansLower == "y" || ansLower == "n") {
@@ -261,8 +284,8 @@ const validateTranslation = async () => {
 }
 
 const initApp = async () => {
-    const p_list = await queryApi("/projects");
-    if (pt_project_id === undefined) {
+    const p_list = await queryParatranzAPI("/projects");
+    if (paratranz_project_id === undefined) {
         print("\nSelect a project id from this list: \n");
         p_list.results.forEach(element => {
             print(element.id + " " + element.name)
@@ -271,10 +294,12 @@ const initApp = async () => {
         await askPID(p_list.results.map((el) => el.id));    
     }
     else {
-        const project = p_list.results.find((el) => el.id === pt_project_id);
+        const project = p_list.results.find((el) => el.id === paratranz_project_id);
         print("Project selected: " + project.id + " " + project.name);
     }
 
+    const cached_words = {};
+    const filtered_words = [];
     for (let i = 0; i < pageCount; i++) {
         print("\x1b[33m", "Page : ", i, "\x1b[0m");
         const untranslatedStrings = await getStringsToTranslate(i);
@@ -288,6 +313,18 @@ const initApp = async () => {
                 continue;
             }
 
+            // Word blacklist
+            if (filtered_words.includes(original)) {
+                print(original, " is blacklisted ignoring");
+                continue;
+            }
+
+            if (Object.keys(cached_words).includes(original)) {
+                // putTranslation(id, )
+                print(original, " already translated: ", cached_words[original]);
+                continue;
+            }
+
             //Check if filename exists in original files
             const file = await getFileFromGameFiles(filename);
             if (file) {
@@ -298,38 +335,42 @@ const initApp = async () => {
                     if (trad !== undefined) {
                         putTranslation(id, trad);
                     } else {
-                        print("No trad found for: ", original, " in ", filename)
+                        print("No translation found for: ", original, " in ", filename)
                     }
 
                 }
-            } else {
-                if (deepL_enabled) {
-                    // TODO: Ask deepL for traduction
-                    // then ask user to validate or not traduction
-                    // TODO handle HTTP 429: Too many requests and HTTP 456 Account limit reached
-                    const specialChars =/[`@#$%^&*()_\-+=\[\]{};':"\\|,.<>\/?~ ]/;
-                    const containsSpecialChars = specialChars.test(original);
-                    
-                    if (containsSpecialChars) {
-                        continue;
-                    }
-
-                    print("From file: " + filename + " key: " + key );
-                    print("Original text : " + original);
-
-                    const translation = await getTranslationFromDeepL(original);
-                    
-                    if (translation !== undefined) {
-                        print(translation.translations[0].text);
-                        const yn = await validateTranslation();
-                        
-                        if (yn) {
-                            putTranslation(id, translation.translations[0].text);
-                        }
-
-                    }                    
-
+            } else  if (deepL_enabled) {
+                const specialChars =/[`@#$%^&*()_\-+=\[\]{};':"\\|,.<>\/?~ ]/;
+                const containsSpecialChars = specialChars.test(original);
+                
+                // Not supporting special chars right now
+                // It is too much prone to errors
+                if (containsSpecialChars) {
+                    continue;
                 }
+
+                print("From file: " + filename + " key: " + key );
+                print("Original text : " + original);
+
+                const translation = await getTranslationFromDeepL(original);
+                if (translation === undefined) {
+                    continue;
+                }
+                
+                print(translation.translations[0].text);
+                const confirmation = await validateTranslation();
+                
+                if (confirmation) {
+                    // Push translation to ParaTranz
+                    putTranslation(id, translation.translations[0].text);
+                    
+                    // Add to cache for further use
+                    cached_words[original] = translation.translations[0].text;
+                }
+                else {
+                    // Add to ignore list
+                    filtered_words.push(original);
+                }                
             }
         }
 
