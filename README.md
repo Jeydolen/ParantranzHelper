@@ -26,6 +26,19 @@ You can now copy your api key and paste it in the app configuration
 
 eg: `const dl_api_key = "ff000000-aa00-0000-ffff-a0a0a0ff0aa0:fx"`
 
+### Use program
+Install nodejs: [Lastest nodejs version](https://nodejs.org/) version above 17.5 are officially supported
+
+Start program by using this command with cmd while in paratranz folder: `node helper.js`
+
+Program will then ask you to provide the project id you want to work with change this line `let pt_project_id` with your project id if you don't want to type it everytime.
+
+eg: `let pt_project_id = 6833;` will automatically work with AGOT FR translation project if you are a member of it.
+
+ParatranzHelper will then load your paradox game files to look for official translation from Paradox and replace where it need to be done.
+
+Warning: this might replace translation with wrong values but 90% of the time it works perfectly.
+
 ## Current features
 
 Automatic translation of original game files 
