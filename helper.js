@@ -26,6 +26,9 @@ const deepl_api_endpoint = "https://api-free.deepl.com/v2";
 // CK3 Original game path
 const game_path = "";
 
+// Use game files, if set to true you need to set game_path to a valid Paradox game folder.
+const use_game_files = false;
+
 // Must be a language available in original game localization folder
 const language = "french";
 
@@ -327,9 +330,7 @@ const initApp = async () => {
 
             //Check if filename exists in original files
             const file = await getFileFromGameFiles(filename);
-            if (use_game_files) {
-                //Check if filename exists in original files
-                const file = await getFileFromGameFiles(filename);
+            if (use_game_files && file) {
                 if (file) {
                     const trad = await getTranslationFromGameFile(file, key);
     
