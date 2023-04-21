@@ -16,7 +16,7 @@ const pt_api_key = "";
 const pt_api_endpoint = "https://paratranz.cn/api";
 
 // Change this if you don't want to type your project id everytime
-let pt_project_id = 6833;
+let pt_project_id;
 
 // API Key DeepL
 const dl_api_key = "";
