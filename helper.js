@@ -327,17 +327,21 @@ const initApp = async () => {
 
             //Check if filename exists in original files
             const file = await getFileFromGameFiles(filename);
-            if (file) {
-                const trad = await getTranslationFromGameFile(file, key);
-
-                if (trad !== false) {
-                    print("Original: ", original, " traduction:", trad);
-                    if (trad !== undefined) {
-                        putTranslation(id, trad);
-                    } else {
-                        print("No translation found for: ", original, " in ", filename)
+            if (use_game_files) {
+                //Check if filename exists in original files
+                const file = await getFileFromGameFiles(filename);
+                if (file) {
+                    const trad = await getTranslationFromGameFile(file, key);
+    
+                    if (trad !== false) {
+                        print("Original: ", original, " traduction:", trad);
+                        if (trad !== undefined) {
+                            putTranslation(id, trad);
+                        } else {
+                            print("No translation found for: ", original, " in ", filename)
+                        }
+    
                     }
-
                 }
             } else  if (deepL_enabled) {
                 const specialChars =/[`@#$%^&*()_\-+=\[\]{};':"\\|,.<>\/?~ ]/;
