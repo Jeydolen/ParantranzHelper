@@ -328,9 +328,9 @@ const initApp = async () => {
                 continue;
             }
 
-            //Check if filename exists in original files
-            const file = await getFileFromGameFiles(filename);
-            if (use_game_files && file) {
+            if (use_game_files) {
+                //Check if filename exists in original files
+                const file = await getFileFromGameFiles(filename);
                 if (file) {
                     const trad = await getTranslationFromGameFile(file, key);
     
