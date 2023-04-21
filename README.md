@@ -29,9 +29,11 @@ eg: `const deepl_api_key = "ff000000-aa00-0000-ffff-a0a0a0ff0aa0:fx"`
 ### Use program
 Install nodejs: [Lastest nodejs version](https://nodejs.org/) version above 17.5 are officially supported
 
-Start program by using this command with cmd while in paratranz folder: `node helper.js`
+Start program by using this command with your terminal while in paratranz folder: `node helper.js`
 
-Program will then ask you to provide the project id you want to work with change this line `let pt_project_id` with your project id if you don't want to type it everytime.
+Program will then ask you to provide the project id you want to work with change this line:
+
+`let paratranz_project_id` with your project id if you don't want to type it everytime.
 
 eg: `let paratranz_project_id = 6833;` will automatically work with AGOT FR translation project if you are a member of it.
 
