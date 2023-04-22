@@ -354,6 +354,7 @@ const initApp = async () => {
                         print("Original: ", original, " traduction:", trad);
                         if (trad !== undefined) {
                             putTranslation(id, trad);
+                            continue;
                         } else {
                             print("No translation found for: ", original, " in ", filename);
                         }
@@ -361,7 +362,9 @@ const initApp = async () => {
                     }
 
                 }
-            } else  if (deepL_enabled) {
+            }
+
+            if (deepL_enabled) {
                 const specialChars =/[`@#$%^&*()_\-+=\[\]{};':"\\|,.<>\/?~ ]/;
                 const containsSpecialChars = specialChars.test(original);
                 
