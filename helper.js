@@ -1,4 +1,5 @@
-const readline = require("readline");
+const readline = require("node:readline/promises");
+// const readline = require("readline");
 const fs = require("node:fs/promises");
 const config = require("./config.json");
 
@@ -18,6 +19,10 @@ const PARATRANZ_API_KEY = config.paratranz_api_key;
 const PARATRANZ_API_ENDPOINT = config.paratranz_api_endpoint;
 // Change this if you don't want to type your project id everytime
 let PARATRANZ_PROJECT_ID = config.parantranz_project_id;
+
+if (typeof PARATRANZ_PROJECT_ID !== "string" || PARATRANZ_PROJECT_ID.length === 0) {
+    PARATRANZ_PROJECT_ID = undefined;
+}
 
 // API Key DeepL
 const DEEPL_API_KEY = config.deepl_api_key;
@@ -156,16 +161,18 @@ const getTranslationFromDeepL = async (stringToTranslate) => {
 };
 // DeepL API
 
-const askQuestion = (query) => {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
 
-    return new Promise(resolve => rl.question(query, ans => {
-        rl.close();
-        resolve(ans);
-    }));
+const askQuestion = (query) => {
+    return rl.question(query);
+    // require("readline");
+    // return new Promise(resolve => rl.question(query, ans => {
+    //     rl.close();
+    //     resolve(ans);
+    // }));
 };
 
 const isFirstAndLastCharacterSame = (string, character) => {
@@ -182,7 +189,7 @@ const askPID = async (project_ids) => {
         PARATRANZ_PROJECT_ID = answer;
     } else {
         console.error("This is not a number from the list");
-        askPID(project_ids);
+        return askPID(project_ids);
     }
 };
 
@@ -295,10 +302,14 @@ const validateTranslation = async () => {
         case "y": return 1;
         case "n": return 0;
         case "r": return -1;
-        default: validateTranslation();
+        default: return validateTranslation();
     }
+};
 
-    validateTranslation();
+const rewriteTranslation = async (originalTranslation) => {
+    rl.write(originalTranslation);
+
+    return rl.question("> ");
 };
 
 const initApp = async () => {
@@ -323,7 +334,7 @@ const initApp = async () => {
         const untranslatedStrings = await getStringsToTranslate(i);
 
         for (const stringToTranslate of untranslatedStrings.results) {
-            const { key, original, translation, id } = stringToTranslate;
+            const { key, original, id } = stringToTranslate;
             const filename = stringToTranslate.file.name;
 
             if (FILE_WHITELIST.length !== 0) {
@@ -382,27 +393,35 @@ const initApp = async () => {
                 print("From file: " + filename + " key: " + key );
                 print("Original text : " + original);
 
-                const translation = await getTranslationFromDeepL(original);
-                if (translation === undefined) {
+                const translationObj = await getTranslationFromDeepL(original);
+                if (translationObj === undefined) {
                     continue;
                 }
+
+                const translationText = translationObj.translations[0].text;
                 
-                print(translation.translations[0].text);
+                print("DeepL translation: ", translationText);
                 const confirmation = await validateTranslation();
                 
                 if (confirmation === 1) {
                     // Push translation to ParaTranz
-                    putTranslation(id, translation.translations[0].text);
+                    putTranslation(id, translationText);
                     
                     // Add to cache for further use
-                    cached_words[original] = translation.translations[0].text;
+                    cached_words[original] = translationText;
                 }
                 else if (confirmation === 0) {
                     // Add to ignore list
                     filtered_words.push(original);
                 } else {
                     // Rewrite
-                    print("User chose to rewrite")
+                    const rewritten = await rewriteTranslation(translationText);
+
+                    // Push rewritten
+                    putTranslation(id, rewritten);
+
+                    // Add to cache for further use
+                    cached_words[original] = rewritten;
                 }
             } else {
                 //Google translate or any other free translation api
