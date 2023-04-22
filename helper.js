@@ -86,8 +86,8 @@ const checkStartupConfiguration = () => {
     }
 
     if (USE_PARADOX_GAME_FILES === true 
-    && typeof PARADOX_GAME_PATH !== "string" 
-    || PARADOX_GAME_PATH.length === 0) {
+    && (typeof PARADOX_GAME_PATH !== "string" 
+    || PARADOX_GAME_PATH.length === 0)) {
         console.error("Error ! Value for game_path must be a valid Paradox game folder !");
         process.exit(5);
     }
@@ -312,7 +312,7 @@ const initApp = async () => {
         await askPID(p_list.results.map((el) => el.id));    
     }
     else {
-        const project = p_list.results.find((el) => el.id === PARATRANZ_PROJECT_ID);
+        const project = p_list.results.find((el) => el.id === Number.parseInt(PARATRANZ_PROJECT_ID));
         print("Project selected: " + project.id + " " + project.name);
     }
 
