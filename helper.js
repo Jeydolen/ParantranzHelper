@@ -1,6 +1,8 @@
 const readline = require("readline");
 const fs = require("node:fs/promises");
+const config = require("./config.json");
 
+console.log(config);
 
 
 // ░█████╗░░█████╗░███╗░░██╗███████╗██╗░██████╗░██╗░░░██╗██████╗░░█████╗░████████╗██╗░█████╗░███╗░░██╗
@@ -11,35 +13,30 @@ const fs = require("node:fs/promises");
 // ░╚════╝░░╚════╝░╚═╝░░╚══╝╚═╝░░░░░╚═╝░╚═════╝░░╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚══╝
 
 // API Key Paratranz
-const paratranz_api_key = "";
+const PARATRANZ_API_KEY = config.paratranz_api_key;
 // Paratranz API endpoint
-const paratranz_api_endpoint = "https://paratranz.cn/api";
-
+const PARATRANZ_API_ENDPOINT = config.paratranz_api_endpoint;
 // Change this if you don't want to type your project id everytime
-let paratranz_project_id = 6833;
+let PARATRANZ_PROJECT_ID = config.parantranz_project_id;
 
 // API Key DeepL
-const deepl_api_key = "";
+const DEEPL_API_KEY = config.deepl_api_key;
 // DeepL API endpoint
-const deepl_api_endpoint = "https://api-free.deepl.com/v2";
-
-// CK3 Original game path
-const game_path = "";
+const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
 
 // Use game files, if set to true you need to set game_path to a valid Paradox game folder.
-const use_game_files = false;
+const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
+// CK3 Original game path
+const PARADOX_GAME_PATH = config.paradox_game_path || "";
+
 
 // Must be a language available in original game localization folder
-const language = "french";
+const TARGET_LANG = config.target_language;
 
 // Array of file names to ignore
-const file_blacklist = [
-    
-];
+const FILE_BLACKLIST = config.paratranz_files_blacklist;
 
-const file_whitelist = [
-
-];
+const FILE_WHITELIST = config.paratranz_files_whitelist;
 
 
 
@@ -56,43 +53,46 @@ const print = console.log;
 
 const NODE_MIN_SUPPORTED_VERSION = "18";
 if (process.version.split(".")[0] < NODE_MIN_SUPPORTED_VERSION) {
-    console.warn("Warning! Your node version might need to install some modules to be able to work correctly (eg: fetch)");
+    console.error(`Error ! Your node version does not support this program ! 
+    Please upgrade your nodejs version to at least: ${NODE_MIN_SUPPORTED_VERSION}.
+    Current node version: ${process.version}`);
+    process.exit(0);
 }
 
-const deepL_enabled = !(typeof deepl_api_key !== "string" || deepl_api_key.length === 0);
+const deepL_enabled = !(typeof DEEPL_API_KEY !== "string" || DEEPL_API_KEY.length === 0);
 const checkStartupConfiguration = () => {
-    if (typeof paratranz_api_key !== "string" 
-    || typeof paratranz_api_endpoint !== "string"
-    || paratranz_api_key.length === 0 
-    || paratranz_api_endpoint.length === 0) {
+    if (typeof PARATRANZ_API_KEY !== "string" 
+    || typeof PARATRANZ_API_ENDPOINT !== "string"
+    || PARATRANZ_API_KEY.length === 0 
+    || PARATRANZ_API_ENDPOINT.length === 0) {
         console.error("Error ! You have to set your paratranz api key and the paratranz api endpoint.");
         process.exit(1);
     }
 
-    const pid = paratranz_project_id;
+    const pid = PARATRANZ_PROJECT_ID;
     if ((pid !== undefined && (typeof pid !== "string" && typeof pid !== "number"))) {
         console.error("Error ! Value for paratranz_project_id must be either undefined, a string, or a valid number.");
         process.exit(2);
     }
 
-    if (file_blacklist === undefined || ! Array.isArray(file_blacklist)) {
+    if (FILE_BLACKLIST === undefined || ! Array.isArray(FILE_BLACKLIST)) {
         console.error("Error ! file_blacklist must be an array.")
         process.exit(3);
     }
 
-    if (file_whitelist === undefined || ! Array.isArray(file_whitelist)) {
+    if (FILE_WHITELIST === undefined || ! Array.isArray(FILE_WHITELIST)) {
         console.error("Error ! file_whitelist must be an array.")
         process.exit(4);
     }
 
-    if (use_game_files === true 
-    && typeof game_path !== "string" 
-    || game_path.length === 0) {
+    if (USE_PARADOX_GAME_FILES === true 
+    && typeof PARADOX_GAME_PATH !== "string" 
+    || PARADOX_GAME_PATH.length === 0) {
         console.error("Error ! Value for game_path must be a valid Paradox game folder !");
         process.exit(5);
     }
 
-    if (! use_game_files) {
+    if (! USE_PARADOX_GAME_FILES) {
         console.warn(`Warning ! You disabled access to your game files ! 
         This might be entirely normal but if that's not the case, 
         please enable use_game_files and set a valid Paradox game path for game_path.`);
@@ -110,12 +110,12 @@ const pt_fetch_options = {
     headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': paratranz_api_key,
+    'Authorization': PARATRANZ_API_KEY,
   },
 };
 
 const queryParatranzAPI = (path) => {
-    return fetch(paratranz_api_endpoint + path, pt_fetch_options)
+    return fetch(PARATRANZ_API_ENDPOINT + path, pt_fetch_options)
         .then(res => res.json());
 };
 
@@ -124,7 +124,7 @@ const putTranslation = (string_id, translation) => {
     put_opt.method = "PUT";
     put_opt.body = JSON.stringify({translation});
     
-    return fetch(paratranz_api_endpoint + "/projects/" + paratranz_project_id + "/strings/" + string_id, put_opt );
+    return fetch(PARATRANZ_API_ENDPOINT + "/projects/" + PARATRANZ_PROJECT_ID + "/strings/" + string_id, put_opt );
 };
 // Paratranz API
 
@@ -132,7 +132,7 @@ const putTranslation = (string_id, translation) => {
 const deepL_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': 'DeepL-Auth-Key ' + deepl_api_key,
+    'Authorization': 'DeepL-Auth-Key ' + DEEPL_API_KEY,
 };
 
 const getTranslationFromDeepL = async (stringToTranslate) => {
@@ -142,7 +142,7 @@ const getTranslationFromDeepL = async (stringToTranslate) => {
         body: JSON.stringify({text: [stringToTranslate], target_lang: "FR"}),
     };
 
-    return fetch(deepl_api_endpoint + "/translate", deepL_fetch_options)
+    return fetch(DEEPL_API_ENDPOINT + "/translate", deepL_fetch_options)
         .then((res) => {
             // TODO handle HTTP 429: Too many requests and HTTP 456 Account limit reached
             if (res.status === 429 || res.status === 456) {
@@ -173,13 +173,13 @@ const isFirstAndLastCharacterSame = (string, character) => {
 };
 
 const askPID = async (project_ids) => {
-    if (paratranz_project_id !== undefined) { return; }
+    if (PARATRANZ_PROJECT_ID !== undefined) { return; }
 
     const answer = await askQuestion("Project id: ");
     const answerInt = Number.parseInt(answer);
 
     if (! Number.isNaN(answerInt) && project_ids.includes(answerInt)) {
-        paratranz_project_id = answer;
+        PARATRANZ_PROJECT_ID = answer;
     } else {
         console.error("This is not a number from the list");
         askPID(project_ids);
@@ -188,13 +188,13 @@ const askPID = async (project_ids) => {
 
 let pageCount = 1;
 const getStringsToTranslate = async (page = 1) => {
-    if (paratranz_project_id === undefined) {
+    if (PARATRANZ_PROJECT_ID === undefined) {
         return;
     }
 
     // 1000 is the maximum item count per page
     const itemCount = 1000;
-    const untranslatedStrings = await queryParatranzAPI("/projects/" + paratranz_project_id + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
+    const untranslatedStrings = await queryParatranzAPI("/projects/" + PARATRANZ_PROJECT_ID + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
     pageCount = untranslatedStrings.pageCount;
 
     return untranslatedStrings;
@@ -218,14 +218,14 @@ const copyGameKeywords = async (untranslatedStrings) => {
 
 const filesInDirectory = [];
 const filesStructureInDirectory = [];
-const lookInFiles = async (path = game_path + "/game/localization/english") => {
+const lookInFiles = async (path = PARADOX_GAME_PATH + "/game/localization/english") => {
     const directory = await fs.readdir(path, {withFileTypes: true});
 
     for (const dirEnt of directory) {
         if (dirEnt.isFile()) {
             filesInDirectory.push(dirEnt.name);
 
-            filesStructureInDirectory.push(path.split(game_path)[1] + "/" + dirEnt.name);
+            filesStructureInDirectory.push(path.split(PARADOX_GAME_PATH)[1] + "/" + dirEnt.name);
         }
         else if (dirEnt.isDirectory()) {
             lookInFiles(path + "/" + dirEnt.name);
@@ -260,10 +260,10 @@ const getTranslationFromGameFile = async (path, key) => {
         
     }
 
-    path = path.replaceAll("english", language);
+    path = path.replaceAll("english", TARGET_LANG);
     
     try {
-        const file = await fs.readFile(game_path + path, {encoding: "utf8"});
+        const file = await fs.readFile(PARADOX_GAME_PATH + path, {encoding: "utf8"});
         if (file === undefined) {
             return false;
         }
@@ -303,7 +303,7 @@ const validateTranslation = async () => {
 
 const initApp = async () => {
     const p_list = await queryParatranzAPI("/projects");
-    if (paratranz_project_id === undefined) {
+    if (PARATRANZ_PROJECT_ID === undefined) {
         print("\nSelect a project id from this list: \n");
         p_list.results.forEach(element => {
             print(element.id + " " + element.name);
@@ -312,7 +312,7 @@ const initApp = async () => {
         await askPID(p_list.results.map((el) => el.id));    
     }
     else {
-        const project = p_list.results.find((el) => el.id === paratranz_project_id);
+        const project = p_list.results.find((el) => el.id === PARATRANZ_PROJECT_ID);
         print("Project selected: " + project.id + " " + project.name);
     }
 
@@ -326,14 +326,14 @@ const initApp = async () => {
             const { key, original, translation, id } = stringToTranslate;
             const filename = stringToTranslate.file.name;
 
-            if (file_whitelist.length !== 0) {
-                if (! file_whitelist.includes(filename)) {
+            if (FILE_WHITELIST.length !== 0) {
+                if (! FILE_WHITELIST.includes(filename)) {
                     continue;
                 }
             }
 
             // File blacklist
-            if (file_blacklist.includes(filename)) {
+            if (FILE_BLACKLIST.includes(filename)) {
                 continue;
             }
 
@@ -349,7 +349,7 @@ const initApp = async () => {
                 continue;
             }
 
-            if (use_game_files) {
+            if (USE_PARADOX_GAME_FILES) {
                 //Check if filename exists in original files
                 const file = await getFileFromGameFiles(filename);
                 if (file) {
