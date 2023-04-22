@@ -16,7 +16,7 @@ const paratranz_api_key = "";
 const paratranz_api_endpoint = "https://paratranz.cn/api";
 
 // Change this if you don't want to type your project id everytime
-let paratranz_project_id;
+let paratranz_project_id = 6833;
 
 // API Key DeepL
 const deepl_api_key = "";
@@ -34,12 +34,13 @@ const language = "french";
 
 // Array of file names to ignore
 const file_blacklist = [
-
+    
 ];
 
 const file_whitelist = [
 
 ];
+
 
 
 
@@ -53,23 +54,24 @@ const file_whitelist = [
 // Please if you are not a developer do NOT go further this line
 const print = console.log;
 
-if (process.version.split(".")[0] < "18") {
+const NODE_MIN_SUPPORTED_VERSION = "18";
+if (process.version.split(".")[0] < NODE_MIN_SUPPORTED_VERSION) {
     console.warn("Warning! Your node version might need to install some modules to be able to work correctly (eg: fetch)");
 }
 
-const deepL_enabled = !(typeof dl_api_key !== "string" || dl_api_key.length === 0);
+const deepL_enabled = !(typeof deepl_api_key !== "string" || deepl_api_key.length === 0);
 const checkStartupConfiguration = () => {
-    if (typeof pt_api_key !== "string" 
-    || typeof pt_api_endpoint !== "string"
-    || pt_api_key.length === 0 
-    || pt_api_endpoint.length === 0) {
+    if (typeof paratranz_api_key !== "string" 
+    || typeof paratranz_api_endpoint !== "string"
+    || paratranz_api_key.length === 0 
+    || paratranz_api_endpoint.length === 0) {
         console.error("Error ! You have to set your paratranz api key and the paratranz api endpoint.");
         process.exit(1);
     }
 
-    const pid = pt_project_id;
+    const pid = paratranz_project_id;
     if ((pid !== undefined && (typeof pid !== "string" && typeof pid !== "number"))) {
-        console.error("Error ! Value for pt_project_id must be either undefined, a string, or a valid number.");
+        console.error("Error ! Value for paratranz_project_id must be either undefined, a string, or a valid number.");
         process.exit(2);
     }
 
@@ -108,12 +110,12 @@ const pt_fetch_options = {
     headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': pt_api_key,
+    'Authorization': paratranz_api_key,
   },
 };
 
 const queryParatranzAPI = (path) => {
-    return fetch(pt_api_endpoint + path, pt_fetch_options)
+    return fetch(paratranz_api_endpoint + path, pt_fetch_options)
         .then(res => res.json());
 };
 
@@ -122,7 +124,7 @@ const putTranslation = (string_id, translation) => {
     put_opt.method = "PUT";
     put_opt.body = JSON.stringify({translation});
     
-    return fetch(pt_api_endpoint + "/projects/" + pt_project_id + "/strings/" + string_id, put_opt );
+    return fetch(paratranz_api_endpoint + "/projects/" + paratranz_project_id + "/strings/" + string_id, put_opt );
 };
 // Paratranz API
 
@@ -130,7 +132,7 @@ const putTranslation = (string_id, translation) => {
 const deepL_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': 'DeepL-Auth-Key ' + dl_api_key,
+    'Authorization': 'DeepL-Auth-Key ' + deepl_api_key,
 };
 
 const getTranslationFromDeepL = async (stringToTranslate) => {
@@ -140,7 +142,7 @@ const getTranslationFromDeepL = async (stringToTranslate) => {
         body: JSON.stringify({text: [stringToTranslate], target_lang: "FR"}),
     };
 
-    return fetch(dl_api_endpoint + "/translate", deepL_fetch_options)
+    return fetch(deepl_api_endpoint + "/translate", deepL_fetch_options)
         .then((res) => {
             // TODO handle HTTP 429: Too many requests and HTTP 456 Account limit reached
             if (res.status === 429 || res.status === 456) {
@@ -171,13 +173,13 @@ const isFirstAndLastCharacterSame = (string, character) => {
 };
 
 const askPID = async (project_ids) => {
-    if (pt_project_id !== undefined) { return; }
+    if (paratranz_project_id !== undefined) { return; }
 
     const answer = await askQuestion("Project id: ");
     const answerInt = Number.parseInt(answer);
 
     if (! Number.isNaN(answerInt) && project_ids.includes(answerInt)) {
-        pt_project_id = answer;
+        paratranz_project_id = answer;
     } else {
         console.error("This is not a number from the list");
         askPID(project_ids);
@@ -186,13 +188,13 @@ const askPID = async (project_ids) => {
 
 let pageCount = 1;
 const getStringsToTranslate = async (page = 1) => {
-    if (pt_project_id === undefined) {
+    if (paratranz_project_id === undefined) {
         return;
     }
 
     // 1000 is the maximum item count per page
     const itemCount = 1000;
-    const untranslatedStrings = await queryParatranzAPI("/projects/" + pt_project_id + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
+    const untranslatedStrings = await queryParatranzAPI("/projects/" + paratranz_project_id + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
     pageCount = untranslatedStrings.pageCount;
 
     return untranslatedStrings;
@@ -286,28 +288,31 @@ const getTranslationFromGameFile = async (path, key) => {
 };
 
 const validateTranslation = async () => {
-    const ans = await askQuestion("Valid translation ? Y/n\n");
+    const ans = await askQuestion("Valid translation ? Y(es)/n(o)/r(ewrite)\n");
     const ansLower = ans.toLowerCase();
 
-    if (ansLower == "y" || ansLower == "n") {
-        return ansLower === "y" ? true : false;
+    switch (ansLower) {
+        case "y": return 1;
+        case "n": return 0;
+        case "r": return -1;
+        default: validateTranslation();
     }
 
     validateTranslation();
-}
+};
 
 const initApp = async () => {
     const p_list = await queryParatranzAPI("/projects");
-    if (pt_project_id === undefined) {
+    if (paratranz_project_id === undefined) {
         print("\nSelect a project id from this list: \n");
         p_list.results.forEach(element => {
-            print(element.id + " " + element.name)
+            print(element.id + " " + element.name);
         });
        
         await askPID(p_list.results.map((el) => el.id));    
     }
     else {
-        const project = p_list.results.find((el) => el.id === pt_project_id);
+        const project = p_list.results.find((el) => el.id === paratranz_project_id);
         print("Project selected: " + project.id + " " + project.name);
     }
 
@@ -385,17 +390,20 @@ const initApp = async () => {
                 print(translation.translations[0].text);
                 const confirmation = await validateTranslation();
                 
-                if (confirmation) {
+                if (confirmation === 1) {
                     // Push translation to ParaTranz
                     putTranslation(id, translation.translations[0].text);
                     
                     // Add to cache for further use
                     cached_words[original] = translation.translations[0].text;
                 }
-                else {
+                else if (confirmation === 0) {
                     // Add to ignore list
                     filtered_words.push(original);
-                }                
+                } else {
+                    // Rewrite
+                    print("User chose to rewrite")
+                }
             } else {
                 //Google translate or any other free translation api
             }
