@@ -109,7 +109,6 @@ const getStringsToTranslate = async (page = 1, file_id) => {
     }
 
     const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
-    // print(untranslatedStrings);
     pageCount = untranslatedStrings.pageCount;
 
     return untranslatedStrings.results;
@@ -121,7 +120,6 @@ const handleString = async (stringToTranslate) => {
 
     if (USE_PARADOX_GAME_FILES) {
         const translation = Paradox.getOfficialTranslation(filename, key, original);
-        print(translation)
         if (translation) {
             print("Original: ", original, " translation: ", translation);
 
@@ -152,7 +150,6 @@ const handleString = async (stringToTranslate) => {
         
         print("DeepL translation: ", translationText);
         const confirmation = await Readline.validateTranslation();
-        print(confirmation)
         
         if (confirmation === 1) {
             // Push translation to ParaTranz
