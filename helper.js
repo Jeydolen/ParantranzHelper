@@ -1,17 +1,8 @@
-const readline = require("node:readline/promises");
-// const readline = require("readline");
 const fs = require("node:fs/promises");
 const config = require("./config.json");
 
-console.log(config);
+const print = console.log;
 
-
-// ░█████╗░░█████╗░███╗░░██╗███████╗██╗░██████╗░██╗░░░██╗██████╗░░█████╗░████████╗██╗░█████╗░███╗░░██╗
-// ██╔══██╗██╔══██╗████╗░██║██╔════╝██║██╔════╝░██║░░░██║██╔══██╗██╔══██╗╚══██╔══╝██║██╔══██╗████╗░██║
-// ██║░░╚═╝██║░░██║██╔██╗██║█████╗░░██║██║░░██╗░██║░░░██║██████╔╝███████║░░░██║░░░██║██║░░██║██╔██╗██║
-// ██║░░██╗██║░░██║██║╚████║██╔══╝░░██║██║░░╚██╗██║░░░██║██╔══██╗██╔══██║░░░██║░░░██║██║░░██║██║╚████║
-// ╚█████╔╝╚█████╔╝██║░╚███║██║░░░░░██║╚██████╔╝╚██████╔╝██║░░██║██║░░██║░░░██║░░░██║╚█████╔╝██║░╚███║
-// ░╚════╝░░╚════╝░╚═╝░░╚══╝╚═╝░░░░░╚═╝░╚═════╝░░╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚══╝
 
 // API Key Paratranz
 const PARATRANZ_API_KEY = config.paratranz_api_key;
@@ -36,6 +27,7 @@ const PARADOX_GAME_PATH = config.paradox_game_path || "";
 
 
 // Must be a language available in original game localization folder
+const SOURCE_LANG = config.source_language || "english";
 const TARGET_LANG = config.target_language;
 
 // Array of file names to ignore
@@ -43,18 +35,6 @@ const FILE_BLACKLIST = config.paratranz_files_blacklist;
 
 const FILE_WHITELIST = config.paratranz_files_whitelist;
 
-
-
-
-// ██████╗░██████╗░░█████╗░░██████╗░██████╗░░█████╗░███╗░░░███╗
-// ██╔══██╗██╔══██╗██╔══██╗██╔════╝░██╔══██╗██╔══██╗████╗░████║
-// ██████╔╝██████╔╝██║░░██║██║░░██╗░██████╔╝███████║██╔████╔██║
-// ██╔═══╝░██╔══██╗██║░░██║██║░░╚██╗██╔══██╗██╔══██║██║╚██╔╝██║
-// ██║░░░░░██║░░██║╚█████╔╝╚██████╔╝██║░░██║██║░░██║██║░╚═╝░██║
-// ╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░░░░╚═╝
-
-// Please if you are not a developer do NOT go further this line
-const print = console.log;
 
 const NODE_MIN_SUPPORTED_VERSION = "18";
 if (process.version.split(".")[0] < NODE_MIN_SUPPORTED_VERSION) {
@@ -110,327 +90,160 @@ const checkStartupConfiguration = () => {
 
 checkStartupConfiguration();
 
-// Paratranz API
-const pt_fetch_options = {
-    headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'Authorization': PARATRANZ_API_KEY,
-  },
-};
+const ParaTranz = new (require("./paratranz").ParaTranz)
+(PARATRANZ_PROJECT_ID, PARATRANZ_API_KEY, PARATRANZ_API_ENDPOINT);
 
-const queryParatranzAPI = (path) => {
-    return fetch(PARATRANZ_API_ENDPOINT + path, pt_fetch_options)
-        .then(res => res.json());
-};
+const DeepL = new (require("./deepl").DeepL)
+(DEEPL_API_KEY, DEEPL_API_ENDPOINT, deepL_enabled);
 
-const putTranslation = (string_id, translation) => {
-    const put_opt = { ...pt_fetch_options};
-    put_opt.method = "PUT";
-    put_opt.body = JSON.stringify({translation});
-    
-    return fetch(PARATRANZ_API_ENDPOINT + "/projects/" + PARATRANZ_PROJECT_ID + "/strings/" + string_id, put_opt );
-};
-// Paratranz API
-
-// DeepL API
-const deepL_headers = {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'Authorization': 'DeepL-Auth-Key ' + DEEPL_API_KEY,
-};
-
-const getTranslationFromDeepL = async (stringToTranslate) => {
-    const deepL_fetch_options = {
-        method: "POST",
-        headers: deepL_headers,
-        body: JSON.stringify({text: [stringToTranslate], target_lang: "FR"}),
-    };
-
-    return fetch(DEEPL_API_ENDPOINT + "/translate", deepL_fetch_options)
-        .then((res) => {
-            // TODO handle HTTP 429: Too many requests and HTTP 456 Account limit reached
-            if (res.status === 429 || res.status === 456) {
-                print("Error, deepL server limit reached ! Try again later or upgrade to paid plan.");
-                deepL_enabled = false;
-                return undefined;
-            }
-            return res;
-        })
-        .then((res) => res.json());
-};
-// DeepL API
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
-
-const askQuestion = (query) => {
-    return rl.question(query);
-    // require("readline");
-    // return new Promise(resolve => rl.question(query, ans => {
-    //     rl.close();
-    //     resolve(ans);
-    // }));
-};
+const Readline = new (require("./readline").Readline)();
 
 const isFirstAndLastCharacterSame = (string, character) => {
     return (string.startsWith(character) && string.endsWith(character));
 };
 
-const askPID = async (project_ids) => {
-    if (PARATRANZ_PROJECT_ID !== undefined) { return; }
-
-    const answer = await askQuestion("Project id: ");
-    const answerInt = Number.parseInt(answer);
-
-    if (! Number.isNaN(answerInt) && project_ids.includes(answerInt)) {
-        PARATRANZ_PROJECT_ID = answer;
-    } else {
-        console.error("This is not a number from the list");
-        return askPID(project_ids);
-    }
-};
-
 let pageCount = 1;
-const getStringsToTranslate = async (page = 1) => {
+const getStringsToTranslate = async (page = 1, file_id) => {
     if (PARATRANZ_PROJECT_ID === undefined) {
         return;
     }
 
-    // 1000 is the maximum item count per page
-    const itemCount = 1000;
-    const untranslatedStrings = await queryParatranzAPI("/projects/" + PARATRANZ_PROJECT_ID + "/strings?stage=0&page=" + page + "&pageSize=" + itemCount);
+    const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
+    // print(untranslatedStrings);
     pageCount = untranslatedStrings.pageCount;
 
-    return untranslatedStrings;
+    return untranslatedStrings.results;
 };
 
-// It is only working for translation of 1 words
-const copyGameKeywords = async (untranslatedStrings) => {
-    for (const object of untranslatedStrings.results) {
-        const str = object.original;
-        const stringArr = object.original.split(" ");
+const handleString = async (stringToTranslate) => {
+    const { key, original, id } = stringToTranslate;
+    const filename = stringToTranslate.file.name;
 
-        if (stringArr.length === 1) {
-            // These are reserved keywords in paradox games so you dont have to translate them
-            if (isFirstAndLastCharacterSame(str, "$") || (str.startsWith("[") && str.endsWith("]"))) {
-                print("Automatic translation game keyword: ", str);
-                putTranslation(object.id, str);
-            }
+    if (USE_PARADOX_GAME_FILES) {
+        const translation = Paradox.getOfficialTranslation(filename, key, original);
+        print(translation)
+        if (translation) {
+            print("Original: ", original, " translation: ", translation);
+
+            ParaTranz.putTranslation(id, translation);
+            return;
         }
     }
-};
 
-const filesInDirectory = [];
-const filesStructureInDirectory = [];
-const lookInFiles = async (path = PARADOX_GAME_PATH + "/game/localization/english") => {
-    const directory = await fs.readdir(path, {withFileTypes: true});
-
-    for (const dirEnt of directory) {
-        if (dirEnt.isFile()) {
-            filesInDirectory.push(dirEnt.name);
-
-            filesStructureInDirectory.push(path.split(PARADOX_GAME_PATH)[1] + "/" + dirEnt.name);
-        }
-        else if (dirEnt.isDirectory()) {
-            lookInFiles(path + "/" + dirEnt.name);
-        }
-    }
-};
-
-const getFileFromGameFiles = async (file) => {
-    if (filesInDirectory.length === 0) {
-        await lookInFiles();
-    }
-
-    const fileToFind = filesStructureInDirectory.find((el) => el.endsWith(file));
-    if (fileToFind !== undefined) {
-        return fileToFind;
-    }
-
-    return false;
-};
-
-const getTranslationFromGameFile = async (path, key) => {
-    if (path.startsWith("/game/localization/english/")) {
-        path = path.split("/game/localization/english/")[1];
-    }
-
-    if (! path.startsWith("/")) {
-        //Seems like there is some kind of bug
-        // // return;
-        // print("hapends", path)
-        // process.exit()
-        path = "/game/localization/english/" + path;
+    if (DeepL.status()) {
+        const specialChars =/[`@#$^&*_\-+=\[\]{};'\\|<>\/?~ ]/;
+        const containsSpecialChars = specialChars.test(original);
         
-    }
-
-    path = path.replaceAll("english", TARGET_LANG);
-    
-    try {
-        const file = await fs.readFile(PARADOX_GAME_PATH + path, {encoding: "utf8"});
-        if (file === undefined) {
-            return false;
+        // Not supporting special chars right now
+        // It is too much prone to errors
+        if (containsSpecialChars) {
+            return;
         }
 
-        const fileLines = file.split("\n");
+        print("From file: " + filename + " key: " + key );
+        print("Original text : " + original);
+
+        const translationObj = await DeepL.getTranslation(original);
+        if (translationObj === undefined) {
+            return;
+        }
+
+        const translationText = translationObj.translations[0].text;
         
+        print("DeepL translation: ", translationText);
+        const confirmation = await Readline.validateTranslation();
+        print(confirmation)
+        
+        if (confirmation === 1) {
+            // Push translation to ParaTranz
+            ParaTranz.putTranslation(id, translationText);
+            
+            // Add to cache for further use
+            cached_words[original] = translationText;
+        }
+        else if (confirmation === 0) {
+            // Add to ignore list
+            filtered_words.push(original);
+        } else {
+            // Rewrite
+            const rewritten = await Readline.rewriteTranslation(translationText);
+
+            // Push rewritten
+            ParaTranz.putTranslation(id, rewritten);
+
+            // Add to cache for further use
+            cached_words[original] = rewritten;
+        }
+    } else {
+        //Google translate or any other free translation api
+    }
+};
 
 
-        const line = fileLines.find((el) => el.includes(key));
-        if (line !== undefined) {
-            const trad = line.split('"')[1];
-            if (trad !== undefined) {
-                return trad;
-            }
+const cached_words = {};
+const filtered_words = [];
+const handleStrings = async (strings) => {
+    if (strings === undefined) {
+        console.error("There is an error with the ParaTranz API, please check your configuration or try again later");
+        process.exit(6);
+    }
+
+    for (const stringToTranslate of strings) {
+        const { original, id } = stringToTranslate;
+        const filename = stringToTranslate.file.name;
+        if (FILE_WHITELIST.length !== 0 && FILE_WHITELIST.includes(filename)) {
+            continue;
         }
 
-    } catch (e) {
-        console.error(e);
+        if (FILE_BLACKLIST.includes(filename)) {
+            continue;
+        }
+        
+        // Word blacklist
+        if (filtered_words.includes(original)) {
+            print(original, " is blacklisted ignoring");
+            continue;
+        }
+            
+        // Word cache
+        if (Object.keys(cached_words).includes(original)) {
+            print(original, " already translated: ", cached_words[original]);
+            ParaTranz.putTranslation(id, cached_words[original]);
+            continue;
+        }
+
+        await handleString(stringToTranslate);
     }
 
-    return false;
+    // Paradox.copyGameKeywords(untranslatedStrings);
 };
 
-const validateTranslation = async () => {
-    const ans = await askQuestion("Valid translation ? Y(es)/n(o)/r(ewrite)\n");
-    const ansLower = ans.toLowerCase();
-
-    switch (ansLower) {
-        case "y": return 1;
-        case "n": return 0;
-        case "r": return -1;
-        default: return validateTranslation();
-    }
-};
-
-const rewriteTranslation = async (originalTranslation) => {
-    rl.write(originalTranslation);
-
-    return rl.question("> ");
-};
-
+let Paradox;
 const initApp = async () => {
-    const p_list = await queryParatranzAPI("/projects");
+    const p_list = await ParaTranz.getProjects();
     if (PARATRANZ_PROJECT_ID === undefined) {
         print("\nSelect a project id from this list: \n");
         p_list.results.forEach(element => {
             print(element.id + " " + element.name);
         });
        
-        await askPID(p_list.results.map((el) => el.id));    
+        PARATRANZ_PROJECT_ID = await Readline.askPID(p_list.results.map((el) => el.id));
+        ParaTranz.setProjectId(PARATRANZ_PROJECT_ID);
     }
     else {
         const project = p_list.results.find((el) => el.id === Number.parseInt(PARATRANZ_PROJECT_ID));
         print("Project selected: " + project.id + " " + project.name);
     }
 
-    const cached_words = {};
-    const filtered_words = [];
-    for (let i = 0; i < pageCount; i++) {
-        print("\x1b[33m", "Page : ", i, "\x1b[0m");
-        const untranslatedStrings = await getStringsToTranslate(i);
-
-        for (const stringToTranslate of untranslatedStrings.results) {
-            const { key, original, id } = stringToTranslate;
-            const filename = stringToTranslate.file.name;
-
-            if (FILE_WHITELIST.length !== 0) {
-                if (! FILE_WHITELIST.includes(filename)) {
-                    continue;
-                }
-            }
-
-            // File blacklist
-            if (FILE_BLACKLIST.includes(filename)) {
-                continue;
-            }
-
-            // Word blacklist
-            if (filtered_words.includes(original)) {
-                print(original, " is blacklisted ignoring");
-                continue;
-            }
-
-            if (Object.keys(cached_words).includes(original)) {
-                // putTranslation(id, )
-                print(original, " already translated: ", cached_words[original]);
-                continue;
-            }
-
-            if (USE_PARADOX_GAME_FILES) {
-                //Check if filename exists in original files
-                const file = await getFileFromGameFiles(filename);
-                if (file) {
-                    const trad = await getTranslationFromGameFile(file, key);
-    
-                    if (trad !== false) {
-                        print("Original: ", original, " traduction:", trad);
-                        if (trad !== undefined) {
-                            putTranslation(id, trad);
-                            continue;
-                        } else {
-                            print("No translation found for: ", original, " in ", filename);
-                        }
-    
-                    }
-
-                }
-            }
-
-            if (deepL_enabled) {
-                const specialChars =/[`@#$%^&*()_\-+=\[\]{};':"\\|,.<>\/?~ ]/;
-                const containsSpecialChars = specialChars.test(original);
-                
-                // Not supporting special chars right now
-                // It is too much prone to errors
-                if (containsSpecialChars) {
-                    continue;
-                }
-
-                print("From file: " + filename + " key: " + key );
-                print("Original text : " + original);
-
-                const translationObj = await getTranslationFromDeepL(original);
-                if (translationObj === undefined) {
-                    continue;
-                }
-
-                const translationText = translationObj.translations[0].text;
-                
-                print("DeepL translation: ", translationText);
-                const confirmation = await validateTranslation();
-                
-                if (confirmation === 1) {
-                    // Push translation to ParaTranz
-                    putTranslation(id, translationText);
-                    
-                    // Add to cache for further use
-                    cached_words[original] = translationText;
-                }
-                else if (confirmation === 0) {
-                    // Add to ignore list
-                    filtered_words.push(original);
-                } else {
-                    // Rewrite
-                    const rewritten = await rewriteTranslation(translationText);
-
-                    // Push rewritten
-                    putTranslation(id, rewritten);
-
-                    // Add to cache for further use
-                    cached_words[original] = rewritten;
-                }
-            } else {
-                //Google translate or any other free translation api
-            }
-        }
-
-        copyGameKeywords(untranslatedStrings);
+    if (USE_PARADOX_GAME_FILES) {
+        Paradox = new (require("./paradox").Paradox)(PARADOX_GAME_PATH, SOURCE_LANG, TARGET_LANG);
+        await Paradox.loadGameFiles();
     }
 
+    for (let j = 0; j < pageCount; j++) {
+        print("\x1b[33m", `Page: ${j}`, "\x1b[0m");
+        await handleStrings(await getStringsToTranslate(j));
+    }
 };
 
 initApp();

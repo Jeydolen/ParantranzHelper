@@ -6,6 +6,7 @@
     "deepl_api_endpoint": "https://api-free.deepl.com/v2",
     "use_paradox_game_files": false,
     "paradox_game_path": "",
+    "source_language": "english",
     "target_language": "french",
     "paratranz_files_blacklist": [],
     "paratranz_files_whitelist": []
