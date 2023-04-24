@@ -185,6 +185,7 @@ const handleStrings = async (strings) => {
         process.exit(6);
     }
 
+    loop1: 
     for (const stringToTranslate of strings) {
         const { original, id } = stringToTranslate;
         const filename = stringToTranslate.file.name;
@@ -192,8 +193,17 @@ const handleStrings = async (strings) => {
             continue;
         }
 
-        if (FILE_BLACKLIST.includes(filename)) {
-            continue;
+        loop2:
+        for (const blacklist_el of FILE_BLACKLIST) {
+            if (blacklist_el.endsWith("/")) {
+                // Means that it's a folder which is blacklisted
+                const substr = filename.substring(0, filename.lastIndexOf("/"));
+                if (blacklist_el === substr + "/") {
+                    continue loop1;
+                }
+            } else if (blacklist_el === filename) {
+                continue loop1;
+            }
         }
         
         // Word blacklist
