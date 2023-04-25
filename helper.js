@@ -214,7 +214,7 @@ const handleStrings = async (strings) => {
             continue;
         }
 
-        if (Paradox.copyGameKeyword(original)) {
+        if (Paradox !== undefined && Paradox.copyGameKeyword(original)) {
             print(original, "is a game keyword automatic translation");
             ParaTranz.putTranslation(id, original);
             continue;
