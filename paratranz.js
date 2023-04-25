@@ -47,6 +47,11 @@ class ParaTranz {
         
         return this.queryParatranzAPI(url);
     };
+
+    async getStringsTotalPageCount () {
+        const result = await this.getStringsForPage(0);
+        return result.pageCount;
+    }
     
     putTranslation (string_id, translation) {
         const put_opt = { ...this.#pt_fetch_options};

@@ -102,15 +102,12 @@ const isFirstAndLastCharacterSame = (string, character) => {
     return (string.startsWith(character) && string.endsWith(character));
 };
 
-let pageCount = 1;
 const getStringsToTranslate = async (page = 1, file_id) => {
     if (PARATRANZ_PROJECT_ID === undefined) {
         return;
     }
 
     const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
-    pageCount = untranslatedStrings.pageCount;
-
     return untranslatedStrings.results;
 };
 
@@ -129,7 +126,7 @@ const handleString = async (stringToTranslate) => {
     }
 
     if (DeepL.status()) {
-        const specialChars =/[`@#$^&*_\-+=\[\]{};'\\|<>\/?~ ]/;
+        const specialChars =/[`@#$^&*_\-+=\[\]{}|<>\/?~]/;
         const containsSpecialChars = specialChars.test(original);
         
         // Not supporting special chars right now
@@ -185,10 +182,12 @@ const handleStrings = async (strings) => {
         process.exit(6);
     }
 
-    loop1: 
-    for (const stringToTranslate of strings) {
+    loop1:
+    for (let i = 0; i < strings.length; i++) {
+        const stringToTranslate = strings[i];
         const { original, id } = stringToTranslate;
         const filename = stringToTranslate.file.name;
+
         if (FILE_WHITELIST.length !== 0 && FILE_WHITELIST.includes(filename)) {
             continue;
         }
@@ -223,6 +222,7 @@ const handleStrings = async (strings) => {
     }
 
     // Paradox.copyGameKeywords(untranslatedStrings);
+    return;
 };
 
 let Paradox;
@@ -247,10 +247,16 @@ const initApp = async () => {
         await Paradox.loadGameFiles();
     }
 
-    for (let j = 0; j < pageCount; j++) {
+    const pageCount = await ParaTranz.getStringsTotalPageCount();
+    print("Page count: " + pageCount);
+    for (let j = 1; j <= pageCount; j++) {
         print("\x1b[33m", `Page: ${j}`, "\x1b[0m");
         await handleStrings(await getStringsToTranslate(j));
     }
+    
+    // Force exit because, I don't know why 
+    //it doesn't happens otherwise
+    process.exit(0); 
 };
 
 initApp();
