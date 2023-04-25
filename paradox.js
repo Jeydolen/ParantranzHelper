@@ -101,21 +101,16 @@ class Paradox {
         return target.translation || false;
     }
 
-    // It is only working for translation of 1 words
-    copyGameKeywords = async (untranslatedStrings) => {
-        for (const object of untranslatedStrings) {
-            const str = object.original;
-            const stringArr = object.original.split(" ");
-
-            if (stringArr.length === 1) {
-                // These are reserved keywords in paradox games so you dont have to translate them
-                if (isFirstAndLastCharacterSame(str, "$") || (str.startsWith("[") && str.endsWith("]"))) {
-                    print("Automatic translation game keyword: ", str);
-                    ParaTranz.putTranslation(object.id, str);
-                }
-            }
+    copyGameKeyword (string) {
+        if (! string.includes(" ") &&
+            ((string.startsWith("$") && string.endsWith("$")) 
+            || (string.startsWith("[") && string.endsWith("]")))
+            ) {
+            return true;
         }
-    };
+
+        return false;
+    }
 
     getTranslationFromGameFile = async (path, key) => {
         if (path.startsWith("/game/localization/english/")) {

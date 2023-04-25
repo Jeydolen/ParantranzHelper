@@ -98,10 +98,6 @@ const DeepL = new (require("./deepl").DeepL)
 
 const Readline = new (require("./readline").Readline)();
 
-const isFirstAndLastCharacterSame = (string, character) => {
-    return (string.startsWith(character) && string.endsWith(character));
-};
-
 const getStringsToTranslate = async (page = 1, file_id) => {
     if (PARATRANZ_PROJECT_ID === undefined) {
         return;
@@ -218,11 +214,15 @@ const handleStrings = async (strings) => {
             continue;
         }
 
+        if (Paradox.copyGameKeyword(original)) {
+            print(original, "is a game keyword automatic translation");
+            ParaTranz.putTranslation(id, original);
+            continue;
+        }
+
         await handleString(stringToTranslate);
     }
 
-    // Paradox.copyGameKeywords(untranslatedStrings);
-    return;
 };
 
 let Paradox;
