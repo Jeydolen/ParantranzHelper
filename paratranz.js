@@ -24,12 +24,19 @@ class ParaTranz {
     
     queryParatranzAPI (path) {
         return fetch(this.PARATRANZ_API_ENDPOINT + path, this.#pt_fetch_options)
+            .then(res => {
+              if (! res.ok) {
+                throw Error("Paratranz returned " + res.statusText);
+              }
+
+              return res;
+            })
             .then(res => res.json())
             .catch(err => {console.log(err); return undefined});
     };
 
-    getProjects() {
-        return this.queryParatranzAPI("/projects");
+    getProjects(page = 1) {
+        return this.queryParatranzAPI("/projects?page=" + page);
     };
 
     getFiles() {
@@ -50,6 +57,10 @@ class ParaTranz {
 
     async getStringsTotalPageCount () {
         const result = await this.getStringsForPage(0);
+        if (result === undefined) {
+          return 0;
+        }
+
         return result.pageCount;
     }
     

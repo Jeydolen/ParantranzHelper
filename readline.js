@@ -30,7 +30,11 @@ class Readline {
     };
 
     async askPID (project_ids) {
-        const answer = await this.ask("Project id: ");
+        const answer = await this.ask("Press N(ext) or select project id: ");
+        if (answer.toLowerCase() === "n") {
+          return false;
+        }
+        
         const answerInt = Number.parseInt(answer);
     
         if (! Number.isNaN(answerInt) && project_ids.includes(answerInt)) {

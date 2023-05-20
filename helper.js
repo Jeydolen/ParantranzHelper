@@ -227,19 +227,37 @@ const handleStrings = async (strings) => {
 
 let Paradox;
 const initApp = async () => {
-    const p_list = await ParaTranz.getProjects();
-    if (PARATRANZ_PROJECT_ID === undefined) {
-        print("\nSelect a project id from this list: \n");
-        p_list.results.forEach(element => {
-            print(element.id + " " + element.name);
-        });
-       
-        PARATRANZ_PROJECT_ID = await Readline.askPID(p_list.results.map((el) => el.id));
-        ParaTranz.setProjectId(PARATRANZ_PROJECT_ID);
-    }
-    else {
-        const project = p_list.results.find((el) => el.id === Number.parseInt(PARATRANZ_PROJECT_ID));
-        print("Project selected: " + project.id + " " + project.name);
+    const PROJECTS_PAGE_COUNT = (await ParaTranz.getProjects(1)).pageSize;
+    for (let i = 1; i <= PROJECTS_PAGE_COUNT; i++) {
+        const p_list = await ParaTranz.getProjects(i);
+
+        if (i > PROJECTS_PAGE_COUNT) {
+          console.log("No more projects, exiting...");
+          process.exit(6);
+        }
+
+        if (PARATRANZ_PROJECT_ID === undefined) {
+            print("\nSelect a project id from this list: \n");
+            p_list.results.forEach(element => {
+                print(element.id + " " + element.name);
+            });
+          
+            const result = await Readline.askPID(p_list.results.map((el) => el.id));
+
+            if (result === false) {
+              continue;
+            }
+            
+            PARATRANZ_PROJECT_ID = result;
+            ParaTranz.setProjectId(result);
+        }
+        else {
+            const project = p_list.results.find((el) => el.id === Number.parseInt(PARATRANZ_PROJECT_ID));
+            if (project !== undefined) {
+              print("Project selected: " + project.id + " " + project.name);
+              break;
+            }
+        }
     }
 
     if (USE_PARADOX_GAME_FILES) {
