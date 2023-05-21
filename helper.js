@@ -104,7 +104,7 @@ const getStringsToTranslate = async (page = 1, file_id) => {
     }
 
     const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
-    return untranslatedStrings.results;
+    return untranslatedStrings.results || [];
 };
 
 const handleString = async (stringToTranslate) => {
@@ -141,7 +141,7 @@ const handleString = async (stringToTranslate) => {
 
         const translationText = translationObj.translations[0].text;
         
-        print("DeepL translation: ", translationText);
+        print("\nDeepL translation: ", translationText);
         const confirmation = await Readline.validateTranslation();
         
         if (confirmation === 1) {
@@ -184,8 +184,23 @@ const handleStrings = async (strings) => {
         const { original, id } = stringToTranslate;
         const filename = stringToTranslate.file.name;
 
-        if (FILE_WHITELIST.length !== 0 && FILE_WHITELIST.includes(filename)) {
-            continue;
+
+        let is_wl = false;
+        loop2:
+        for (const whitelist_el of FILE_WHITELIST) {
+            if (whitelist_el.endsWith("/")) {
+                // Means that it's a folder which is whitelisted
+                const substr = filename.substring(0, filename.lastIndexOf("/"));
+                if (whitelist_el === substr + "/") {
+                    is_wl = true;
+                }
+            } else if (whitelist_el === filename) {
+                is_wl = true;
+            }
+        }
+
+        if (FILE_WHITELIST.length > 0 && ! is_wl) {
+          continue;
         }
 
         loop2:
