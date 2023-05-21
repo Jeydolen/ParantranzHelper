@@ -1,4 +1,3 @@
-const fs = require("node:fs/promises");
 const config = require("./config.json");
 
 const print = console.log;
@@ -14,6 +13,8 @@ let PARATRANZ_PROJECT_ID = config.parantranz_project_id;
 if (typeof PARATRANZ_PROJECT_ID !== "string" || PARATRANZ_PROJECT_ID.length === 0) {
     PARATRANZ_PROJECT_ID = undefined;
 }
+
+const USE_EXTERNAL_TRANSLATION_TOOLS = config.use_external_translation_tools || false;
 
 // API Key DeepL
 const DEEPL_API_KEY = config.deepl_api_key;
@@ -114,11 +115,15 @@ const handleString = async (stringToTranslate) => {
     if (USE_PARADOX_GAME_FILES) {
         const translation = Paradox.getOfficialTranslation(filename, key, original);
         if (translation) {
-            print("Original: ", original, " translation: ", translation);
+            print("Original: ", original, "\ntranslation: ", translation);
 
-            ParaTranz.putTranslation(id, translation);
+            await ParaTranz.putTranslation(id, translation);
             return;
         }
+    }
+
+    if (! USE_EXTERNAL_TRANSLATION_TOOLS) {
+      return;
     }
 
     if (DeepL.status()) {
@@ -146,7 +151,7 @@ const handleString = async (stringToTranslate) => {
         
         if (confirmation === 1) {
             // Push translation to ParaTranz
-            ParaTranz.putTranslation(id, translationText);
+            await ParaTranz.putTranslation(id, translationText);
             
             // Add to cache for further use
             cached_words[original] = translationText;
@@ -159,7 +164,7 @@ const handleString = async (stringToTranslate) => {
             const rewritten = await Readline.rewriteTranslation(translationText);
 
             // Push rewritten
-            ParaTranz.putTranslation(id, rewritten);
+            await ParaTranz.putTranslation(id, rewritten);
 
             // Add to cache for further use
             cached_words[original] = rewritten;
@@ -225,13 +230,13 @@ const handleStrings = async (strings) => {
         // Word cache
         if (Object.keys(cached_words).includes(original)) {
             print(original, " already translated: ", cached_words[original]);
-            ParaTranz.putTranslation(id, cached_words[original]);
+            await ParaTranz.putTranslation(id, cached_words[original]);
             continue;
         }
 
         if (Paradox !== undefined && Paradox.copyGameKeyword(original)) {
             print(original, "is a game keyword automatic translation");
-            ParaTranz.putTranslation(id, original);
+            await ParaTranz.putTranslation(id, original);
             continue;
         }
 

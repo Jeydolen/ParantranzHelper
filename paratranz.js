@@ -70,7 +70,14 @@ class ParaTranz {
         put_opt.body = JSON.stringify({translation});
         
         const url = `${this.PARATRANZ_API_ENDPOINT}/projects/${this.PARATRANZ_PROJECT_ID}/strings/${string_id}`;
-        return fetch(url, put_opt );
+        return fetch(url, put_opt).then((res) => {
+            if (! res.ok) {
+              print("ParaTranz stopped responding, try again later");
+              process.exit(7);
+            }
+
+            return res;
+        });
     };
 };
 
