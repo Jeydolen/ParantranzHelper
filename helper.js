@@ -108,6 +108,24 @@ const getStringsToTranslate = async (page = 1, file_id) => {
     return untranslatedStrings.results || [];
 };
 
+const startsWithCapital = (text) => {
+    const words = text.split(" ");
+    for (let i = 0; i < words.length; i++) {
+        if (words[i].charAt(0) !== words[i].charAt(0).toUpperCase()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const upperCaseEachWord = (text) => {
+    const words = text.split(" ");
+    for (let i = 0; i < words.length; i++) {
+        words[i] = words[i][0].toUpperCase() + words[i].substr(1);
+    }
+    return words.join(" ");
+}
+
 const handleString = async (stringToTranslate) => {
     const { key, original, id } = stringToTranslate;
     const filename = stringToTranslate.file.name;
@@ -144,7 +162,10 @@ const handleString = async (stringToTranslate) => {
             return;
         }
 
-        const translationText = translationObj.translations[0].text;
+        let translationText = translationObj.translations[0].text;
+        if (startsWithCapital(original)) {
+            translationText = upperCaseEachWord(translationText)
+        }
         
         print("\nDeepL translation: ", translationText);
         const confirmation = await Readline.validateTranslation();
