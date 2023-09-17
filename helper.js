@@ -175,8 +175,8 @@ const handleString = async (stringToTranslate) => {
             return;
         }
 
+        let translationText = translationObj.translations[0].text;
         if (ENABLE_DEEPL_POST_PROCESSING) {
-            let translationText = translationObj.translations[0].text;
             if (startsWithCapital(original)) {
                 translationText = upperCaseEachWord(translationText)
             }
