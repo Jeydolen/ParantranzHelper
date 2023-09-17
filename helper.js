@@ -23,6 +23,7 @@ const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
 
 // DeepL post-processing
 const ENABLE_DEEPL_POST_PROCESSING = config.enable_deepl_post_processing;
+const SOURCE_CAPITAL_WORD_EXCEPTIONS = config.source_capital_word_exceptions;
 
 // Use game files, if set to true you need to set game_path to a valid Paradox game folder.
 const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
@@ -114,7 +115,7 @@ const getStringsToTranslate = async (page = 1, file_id) => {
 const startsWithCapital = (text) => {
     const words = text.split(" ");
     for (let i = 0; i < words.length; i++) {
-        if (words[i].charAt(0) !== words[i].charAt(0).toUpperCase()) {
+        if ((words[i].charAt(0) !== words[i].charAt(0).toUpperCase()) && (!SOURCE_CAPITAL_WORD_EXCEPTIONS.includes(words[i]))) {
             return false;
         }
     }
