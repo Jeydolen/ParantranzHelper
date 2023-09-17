@@ -21,6 +21,9 @@ const DEEPL_API_KEY = config.deepl_api_key;
 // DeepL API endpoint
 const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
 
+// DeepL post-processing
+const ENABLE_DEEPL_POST_PROCESSING = config.enable_deepl_post_processing;
+
 // Use game files, if set to true you need to set game_path to a valid Paradox game folder.
 const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
 // CK3 Original game path
@@ -162,9 +165,11 @@ const handleString = async (stringToTranslate) => {
             return;
         }
 
-        let translationText = translationObj.translations[0].text;
-        if (startsWithCapital(original)) {
-            translationText = upperCaseEachWord(translationText)
+        if (ENABLE_DEEPL_POST_PROCESSING) {
+            let translationText = translationObj.translations[0].text;
+            if (startsWithCapital(original)) {
+                translationText = upperCaseEachWord(translationText)
+            }
         }
         
         print("\nDeepL translation: ", translationText);
