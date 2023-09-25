@@ -22,9 +22,9 @@ const DEEPL_API_KEY = config.deepl_api_key;
 const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
 
 // DeepL post-processing
-const ENABLE_DEEPL_POST_PROCESSING = config.enable_deepl_post_processing;
-const SOURCE_CAPITAL_WORD_EXCEPTIONS = config.source_capital_word_exceptions;
-const TARGET_CAPITAL_WORD_EXCEPTIONS = config.target_capital_word_exceptions;
+const ENABLE_DEEPL_POST_PROCESSING = config.enable_deepl_post_processing || false;
+const SOURCE_CAPITAL_WORD_EXCEPTIONS = config.source_capital_word_exceptions || [];
+const TARGET_CAPITAL_WORD_EXCEPTIONS = config.target_capital_word_exceptions || [];
 
 // Use game files, if set to true you need to set game_path to a valid Paradox game folder.
 const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
@@ -81,6 +81,22 @@ const checkStartupConfiguration = () => {
     || PARADOX_GAME_PATH.length === 0)) {
         console.error("Error ! Value for game_path must be a valid Paradox game folder !");
         process.exit(5);
+    }
+
+    if (typeof ENABLE_DEEPL_POST_PROCESSING !== "boolean") {
+        console.error("Error ! Value for deepl_post_processing must be a boolean !");
+        // Exit code 6 is already used later in the program
+        process.exit(7);
+    }
+
+    if (! Array.isArray(SOURCE_CAPITAL_WORD_EXCEPTIONS)) {
+        console.error("Error ! Value for SOURCE_CAPITAL_WORD_EXCEPTIONS must be an array !");
+        process.exit(8);
+    }
+
+    if (! Array.isArray(TARGET_CAPITAL_WORD_EXCEPTIONS)) {
+        console.error("Error ! Value for TARGET_CAPITAL_WORD_EXCEPTIONS must be an array !");
+        process.exit(9);
     }
 
     if (! USE_PARADOX_GAME_FILES) {
