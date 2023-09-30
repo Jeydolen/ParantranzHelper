@@ -21,6 +21,11 @@ const DEEPL_API_KEY = config.deepl_api_key;
 // DeepL API endpoint
 const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
 
+// DeepL post-processing
+const ENABLE_DEEPL_POST_PROCESSING = config.enable_deepl_post_processing || false;
+const SOURCE_CAPITAL_WORD_EXCEPTIONS = config.source_capital_word_exceptions || [];
+const TARGET_CAPITAL_WORD_EXCEPTIONS = config.target_capital_word_exceptions || [];
+
 // Use game files, if set to true you need to set game_path to a valid Paradox game folder.
 const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
 // CK3 Original game path
@@ -78,6 +83,22 @@ const checkStartupConfiguration = () => {
         process.exit(5);
     }
 
+    if (typeof ENABLE_DEEPL_POST_PROCESSING !== "boolean") {
+        console.error("Error ! Value for deepl_post_processing must be a boolean !");
+        // Exit code 6 is already used later in the program
+        process.exit(7);
+    }
+
+    if (! Array.isArray(SOURCE_CAPITAL_WORD_EXCEPTIONS)) {
+        console.error("Error ! Value for SOURCE_CAPITAL_WORD_EXCEPTIONS must be an array !");
+        process.exit(8);
+    }
+
+    if (! Array.isArray(TARGET_CAPITAL_WORD_EXCEPTIONS)) {
+        console.error("Error ! Value for TARGET_CAPITAL_WORD_EXCEPTIONS must be an array !");
+        process.exit(9);
+    }
+
     if (! USE_PARADOX_GAME_FILES) {
         console.warn(`Warning ! You disabled access to your game files ! 
         This might be entirely normal but if that's not the case, 
@@ -107,6 +128,32 @@ const getStringsToTranslate = async (page = 1, file_id) => {
     const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
     return untranslatedStrings.results || [];
 };
+
+const startsWithCapital = (text) => {
+    const words = text.split(" ");
+    for (let i = 0; i < words.length; i++) {
+        if ((words[i].charAt(0) !== words[i].charAt(0).toUpperCase()) && (!SOURCE_CAPITAL_WORD_EXCEPTIONS.includes(words[i])) &&
+            ((words[i].length < 3) || (words[i].charAt(1) !== "'") || ((words[i].charAt(1) === "'") && (words[i].charAt(2) !== words[i].charAt(2).toUpperCase())))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const upperCaseEachWord = (text) => {
+    const words = text.split(" ");
+    for (let i = 0; i < words.length; i++) {
+        if (
+            (!TARGET_CAPITAL_WORD_EXCEPTIONS.includes(words[i])) && ((words[i].length > 2) && (words[i].charAt(1) !== "'"))
+        ) {
+            words[i] = words[i][0].toUpperCase() + words[i].substr(1);
+        }
+        if ((words[i].length > 2) && (words[i].charAt(1) === "'")) {
+            words[i] = words[i].substr(0, 2) + words[i][2].toUpperCase() + words[i].substr(3);
+        }
+    }
+    return words.join(" ");
+}
 
 const handleString = async (stringToTranslate) => {
     const { key, original, id } = stringToTranslate;
@@ -144,7 +191,12 @@ const handleString = async (stringToTranslate) => {
             return;
         }
 
-        const translationText = translationObj.translations[0].text;
+        let translationText = translationObj.translations[0].text;
+        if (ENABLE_DEEPL_POST_PROCESSING) {
+            if (startsWithCapital(original)) {
+                translationText = upperCaseEachWord(translationText)
+            }
+        }
         
         print("\nDeepL translation: ", translationText);
         const confirmation = await Readline.validateTranslation();
