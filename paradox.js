@@ -68,11 +68,8 @@ class Paradox {
         }
     };
 
-    /**
-     * 
-     */ 
     getOfficialTranslation(filename, key, original_text) {
-        // replace folder in ParaTranz project is for replacing partly official translation
+        // /replace folder in ParaTranz project is for replacing partly official translation
         // by doing .replace() we filter them and check for exact text to replace not already translated one
         filename = filename.replace(`replace/${this.SOURCE_LANG}`, "");
 
@@ -89,7 +86,7 @@ class Paradox {
             return false;
         }
 
-        const source = source_translations.find((el) => el.key.includes(key) && el.translation.includes(original_text));
+        const source = source_translations.find((el) => el.key.includes(key) && el.translation === original_text);
         
         if (source === undefined) {
             // Means there is no translation for this key with the exact original text
@@ -101,7 +98,46 @@ class Paradox {
         return target.translation || false;
     }
 
+    extractGameKeywords(string) {
+        const gameKeywords = [];
+        let gameKeyword = "";
+        let isGameKeywordChar = false;
+        for (let i = 0; i < string.length; i++) {
+            const character = string[i];
+
+            // Start of a game keyword
+            if (character === "[") {
+                isGameKeywordChar = true;
+            }
+
+            if (isGameKeywordChar) {
+                gameKeyword += character;
+            }
+
+            if (character === "]") {
+                isGameKeywordChar = false;
+                gameKeywords.push(gameKeyword);
+                gameKeyword = "";
+            }
+        }
+
+
+        return gameKeywords;
+    }
+
     copyGameKeyword (string) {
+        const extractedKeywords = this.extractGameKeywords(string);
+
+        let str = string;
+        for (const keyword of extractedKeywords) {
+            str = str.split(keyword).join("");
+        }
+
+        
+        if (str.length === 0 || str === " ") {
+            return true;
+        }
+
         if (! string.includes(" ") &&
             ((string.startsWith("$") && string.endsWith("$")) 
             || (string.startsWith("[") && string.endsWith("]")))

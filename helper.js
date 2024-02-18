@@ -154,11 +154,11 @@ const handleString = async (stringToTranslate) => {
             await ParaTranz.putTranslation(id, translationText);
             
             // Add to cache for further use
-            cached_words[original] = translationText;
+            cached_strings[original] = translationText;
         }
         else if (confirmation === 0) {
             // Add to ignore list
-            filtered_words.push(original);
+            filtered_strings.push(original);
         } else {
             // Rewrite
             const rewritten = await Readline.rewriteTranslation(translationText);
@@ -167,7 +167,7 @@ const handleString = async (stringToTranslate) => {
             await ParaTranz.putTranslation(id, rewritten);
 
             // Add to cache for further use
-            cached_words[original] = rewritten;
+            cached_strings[original] = rewritten;
         }
     } else {
         //Google translate or any other free translation api
@@ -175,65 +175,62 @@ const handleString = async (stringToTranslate) => {
 };
 
 
-const cached_words = {};
-const filtered_words = [];
+const handleFileList = (FILE_ARRAY, filename) => {
+  let is_in_list = false;
+  for (const file_name_el of FILE_ARRAY) {
+      if (file_name_el.endsWith("/")) {
+          // Means that it's a folder which is blacklisted
+          const substr = filename.substring(0, filename.lastIndexOf("/"));
+          if (file_name_el === substr + "/") {
+              is_in_list = true;
+          }
+      } else if (file_name_el === filename) {
+          is_in_list = true;
+      }
+  }
+
+  return is_in_list;
+}
+
+const cached_strings = {};
+const filtered_strings = [];
 const handleStrings = async (strings) => {
     if (strings === undefined) {
         console.error("There is an error with the ParaTranz API, please check your configuration or try again later");
         process.exit(6);
     }
 
-    loop1:
     for (let i = 0; i < strings.length; i++) {
         const stringToTranslate = strings[i];
         const { original, id } = stringToTranslate;
         const filename = stringToTranslate.file.name;
 
-
-        let is_wl = false;
-        loop2:
-        for (const whitelist_el of FILE_WHITELIST) {
-            if (whitelist_el.endsWith("/")) {
-                // Means that it's a folder which is whitelisted
-                const substr = filename.substring(0, filename.lastIndexOf("/"));
-                if (whitelist_el === substr + "/") {
-                    is_wl = true;
-                }
-            } else if (whitelist_el === filename) {
-                is_wl = true;
-            }
-        }
-
+        // File WL
+        const is_wl = handleFileList(FILE_WHITELIST, filename);
         if (FILE_WHITELIST.length > 0 && ! is_wl) {
           continue;
         }
-
-        loop2:
-        for (const blacklist_el of FILE_BLACKLIST) {
-            if (blacklist_el.endsWith("/")) {
-                // Means that it's a folder which is blacklisted
-                const substr = filename.substring(0, filename.lastIndexOf("/"));
-                if (blacklist_el === substr + "/") {
-                    continue loop1;
-                }
-            } else if (blacklist_el === filename) {
-                continue loop1;
-            }
+        
+        // File blacklist
+        const is_bl = handleFileList(FILE_BLACKLIST, filename);
+        if (FILE_BLACKLIST.length > 0 && is_bl) {
+          continue;
         }
         
-        // Word blacklist
-        if (filtered_words.includes(original)) {
+        // String blacklist
+        if (filtered_strings.includes(original)) {
             print(original, " is blacklisted ignoring");
             continue;
         }
             
-        // Word cache
-        if (Object.keys(cached_words).includes(original)) {
-            print(original, " already translated: ", cached_words[original]);
-            await ParaTranz.putTranslation(id, cached_words[original]);
+        // String cache
+        if (Object.keys(cached_strings).includes(original)) {
+            print(original, " already translated: ", cached_strings[original]);
+            await ParaTranz.putTranslation(id, cached_strings[original]);
             continue;
         }
 
+        // Game keyword
         if (Paradox !== undefined && Paradox.copyGameKeyword(original)) {
             print(original, "is a game keyword automatic translation");
             await ParaTranz.putTranslation(id, original);
@@ -293,7 +290,7 @@ const initApp = async () => {
     }
     
     // Force exit because, I don't know why 
-    //it doesn't happens otherwise
+    // it doesn't happen otherwise
     process.exit(0); 
 };
 
