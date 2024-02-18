@@ -1,0 +1,22 @@
+{
+  "name": "paratranz-helper",
+  "version": "1.0.0",
+  "description": "Helper for Paradox game translation through ParaTranz",
+  "main": "helper.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jeydolen/ParantranzHelper.git"
+  },
+  "keywords": [
+    "Translation"
+  ],
+  "author": "Jeydolen",
+  "license": "AAL",
+  "bugs": {
+    "url": "https://github.com/Jeydolen/ParantranzHelper/issues"
+  },
+  "homepage": "https://github.com/Jeydolen/ParantranzHelper#readme"
+}

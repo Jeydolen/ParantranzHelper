@@ -1,114 +1,12 @@
-const config = require("./config.json");
+const {
+    print, getStartupConfiguration,
+    FILE_WHITELIST, FILE_BLACKLIST,
+    USE_PARADOX_GAME_FILES,
+    USE_EXTERNAL_TRANSLATION_TOOLS,
+    Readline
+} = require("./config");
 
-const print = console.log;
-
-
-// API Key Paratranz
-const PARATRANZ_API_KEY = config.paratranz_api_key;
-// Paratranz API endpoint
-const PARATRANZ_API_ENDPOINT = config.paratranz_api_endpoint;
-// Change this if you don't want to type your project id everytime
-let PARATRANZ_PROJECT_ID = config.parantranz_project_id;
-
-if (typeof PARATRANZ_PROJECT_ID !== "string" || PARATRANZ_PROJECT_ID.length === 0) {
-    PARATRANZ_PROJECT_ID = undefined;
-}
-
-const USE_EXTERNAL_TRANSLATION_TOOLS = config.use_external_translation_tools || false;
-
-// API Key DeepL
-const DEEPL_API_KEY = config.deepl_api_key;
-// DeepL API endpoint
-const DEEPL_API_ENDPOINT = config.deepl_api_endpoint;
-
-// Use game files, if set to true you need to set game_path to a valid Paradox game folder.
-const USE_PARADOX_GAME_FILES = config.use_paradox_game_files || false;
-// CK3 Original game path
-const PARADOX_GAME_PATH = config.paradox_game_path || "";
-
-
-// Must be a language available in original game localization folder
-const SOURCE_LANG = config.source_language || "english";
-const TARGET_LANG = config.target_language;
-
-// Array of file names to ignore
-const FILE_BLACKLIST = config.paratranz_files_blacklist;
-
-const FILE_WHITELIST = config.paratranz_files_whitelist;
-
-
-const NODE_MIN_SUPPORTED_VERSION = "18";
-if (process.version.split(".")[0] < NODE_MIN_SUPPORTED_VERSION) {
-    console.error(`Error ! Your node version does not support this program ! 
-    Please upgrade your nodejs version to at least: ${NODE_MIN_SUPPORTED_VERSION}.
-    Current node version: ${process.version}`);
-    process.exit(0);
-}
-
-const deepL_enabled = !(typeof DEEPL_API_KEY !== "string" || DEEPL_API_KEY.length === 0);
-const checkStartupConfiguration = () => {
-    if (typeof PARATRANZ_API_KEY !== "string" 
-    || typeof PARATRANZ_API_ENDPOINT !== "string"
-    || PARATRANZ_API_KEY.length === 0 
-    || PARATRANZ_API_ENDPOINT.length === 0) {
-        console.error("Error ! You have to set your paratranz api key and the paratranz api endpoint.");
-        process.exit(1);
-    }
-
-    const pid = PARATRANZ_PROJECT_ID;
-    if ((pid !== undefined && (typeof pid !== "string" && typeof pid !== "number"))) {
-        console.error("Error ! Value for paratranz_project_id must be either undefined, a string, or a valid number.");
-        process.exit(2);
-    }
-
-    if (FILE_BLACKLIST === undefined || ! Array.isArray(FILE_BLACKLIST)) {
-        console.error("Error ! file_blacklist must be an array.")
-        process.exit(3);
-    }
-
-    if (FILE_WHITELIST === undefined || ! Array.isArray(FILE_WHITELIST)) {
-        console.error("Error ! file_whitelist must be an array.")
-        process.exit(4);
-    }
-
-    if (USE_PARADOX_GAME_FILES === true 
-    && (typeof PARADOX_GAME_PATH !== "string" 
-    || PARADOX_GAME_PATH.length === 0)) {
-        console.error("Error ! Value for game_path must be a valid Paradox game folder !");
-        process.exit(5);
-    }
-
-    if (! USE_PARADOX_GAME_FILES) {
-        console.warn(`Warning ! You disabled access to your game files ! 
-        This might be entirely normal but if that's not the case, 
-        please enable use_game_files and set a valid Paradox game path for game_path.`);
-    }
-
-    if (! deepL_enabled) {
-        console.warn("Warning ! DeepL recommandations won't work if you don't set an api key !");
-    }
-};
-
-checkStartupConfiguration();
-
-const ParaTranz = new (require("./paratranz").ParaTranz)
-(PARATRANZ_PROJECT_ID, PARATRANZ_API_KEY, PARATRANZ_API_ENDPOINT);
-
-const DeepL = new (require("./deepl").DeepL)
-(DEEPL_API_KEY, DEEPL_API_ENDPOINT, deepL_enabled);
-
-const Readline = new (require("./readline").Readline)();
-
-const getStringsToTranslate = async (page = 1, file_id) => {
-    if (PARATRANZ_PROJECT_ID === undefined) {
-        return;
-    }
-
-    const untranslatedStrings = await ParaTranz.getStringsForPage(page, file_id);
-    return untranslatedStrings.results || [];
-};
-
-const handleString = async (stringToTranslate) => {
+const handleString = async (stringToTranslate, DeepL, Paradox) => {
     const { key, original, id } = stringToTranslate;
     const filename = stringToTranslate.file.name;
 
@@ -122,21 +20,21 @@ const handleString = async (stringToTranslate) => {
         }
     }
 
-    if (! USE_EXTERNAL_TRANSLATION_TOOLS) {
-      return;
+    if (!USE_EXTERNAL_TRANSLATION_TOOLS) {
+        return;
     }
 
     if (DeepL.status()) {
-        const specialChars =/[`@#$^&*_\-+=\[\]{}|<>\/?~]/;
+        const specialChars = /[`@#$^&*_\-+=\[\]{}|<>\/?~]/;
         const containsSpecialChars = specialChars.test(original);
-        
+
         // Not supporting special chars right now
         // It is too much prone to errors
         if (containsSpecialChars) {
             return;
         }
 
-        print("From file: " + filename + " key: " + key );
+        print("From file: " + filename + " key: " + key);
         print("Original text : " + original);
 
         const translationObj = await DeepL.getTranslation(original);
@@ -145,14 +43,14 @@ const handleString = async (stringToTranslate) => {
         }
 
         const translationText = translationObj.translations[0].text;
-        
+
         print("\nDeepL translation: ", translationText);
         const confirmation = await Readline.validateTranslation();
-        
+
         if (confirmation === 1) {
             // Push translation to ParaTranz
             await ParaTranz.putTranslation(id, translationText);
-            
+
             // Add to cache for further use
             cached_strings[original] = translationText;
         }
@@ -176,25 +74,25 @@ const handleString = async (stringToTranslate) => {
 
 
 const handleFileList = (FILE_ARRAY, filename) => {
-  let is_in_list = false;
-  for (const file_name_el of FILE_ARRAY) {
-      if (file_name_el.endsWith("/")) {
-          // Means that it's a folder which is blacklisted
-          const substr = filename.substring(0, filename.lastIndexOf("/"));
-          if (file_name_el === substr + "/") {
-              is_in_list = true;
-          }
-      } else if (file_name_el === filename) {
-          is_in_list = true;
-      }
-  }
+    let is_in_list = false;
+    for (const file_name_el of FILE_ARRAY) {
+        if (file_name_el.endsWith("/")) {
+            // Means that it's a folder which is blacklisted
+            const substr = filename.substring(0, filename.lastIndexOf("/"));
+            if (file_name_el === substr + "/") {
+                is_in_list = true;
+            }
+        } else if (file_name_el === filename) {
+            is_in_list = true;
+        }
+    }
 
-  return is_in_list;
+    return is_in_list;
 }
 
 const cached_strings = {};
 const filtered_strings = [];
-const handleStrings = async (strings) => {
+const handleStrings = async (strings, DeepL, Paradox) => {
     if (strings === undefined) {
         console.error("There is an error with the ParaTranz API, please check your configuration or try again later");
         process.exit(6);
@@ -207,22 +105,22 @@ const handleStrings = async (strings) => {
 
         // File WL
         const is_wl = handleFileList(FILE_WHITELIST, filename);
-        if (FILE_WHITELIST.length > 0 && ! is_wl) {
-          continue;
+        if (FILE_WHITELIST.length > 0 && !is_wl) {
+            continue;
         }
-        
+
         // File blacklist
         const is_bl = handleFileList(FILE_BLACKLIST, filename);
         if (FILE_BLACKLIST.length > 0 && is_bl) {
-          continue;
+            continue;
         }
-        
+
         // String blacklist
         if (filtered_strings.includes(original)) {
             print(original, " is blacklisted ignoring");
             continue;
         }
-            
+
         // String cache
         if (Object.keys(cached_strings).includes(original)) {
             print(original, " already translated: ", cached_strings[original]);
@@ -237,61 +135,30 @@ const handleStrings = async (strings) => {
             continue;
         }
 
-        await handleString(stringToTranslate);
+        await handleString(stringToTranslate, DeepL, Paradox);
     }
 
 };
 
-let Paradox;
 const initApp = async () => {
-    const PROJECTS_PAGE_COUNT = (await ParaTranz.getProjects(1)).pageSize;
-    for (let i = 1; i <= PROJECTS_PAGE_COUNT; i++) {
-        const p_list = await ParaTranz.getProjects(i);
+    const { ParaTranz, DeepL, Paradox } = await getStartupConfiguration();
 
-        if (i > PROJECTS_PAGE_COUNT) {
-          console.log("No more projects, exiting...");
-          process.exit(6);
-        }
-
-        if (PARATRANZ_PROJECT_ID === undefined) {
-            print("\nSelect a project id from this list: \n");
-            p_list.results.forEach(element => {
-                print(element.id + " " + element.name);
-            });
-          
-            const result = await Readline.askPID(p_list.results.map((el) => el.id));
-
-            if (result === false) {
-              continue;
-            }
-            
-            PARATRANZ_PROJECT_ID = result;
-            ParaTranz.setProjectId(result);
-        }
-        else {
-            const project = p_list.results.find((el) => el.id === Number.parseInt(PARATRANZ_PROJECT_ID));
-            if (project !== undefined) {
-              print("Project selected: " + project.id + " " + project.name);
-              break;
-            }
-        }
-    }
-
-    if (USE_PARADOX_GAME_FILES) {
-        Paradox = new (require("./paradox").Paradox)(PARADOX_GAME_PATH, SOURCE_LANG, TARGET_LANG);
-        await Paradox.loadGameFiles();
+    const select_project_result = await ParaTranz.selectProject();
+    if (!select_project_result) {
+        console.log("No more projects, exiting...");
+        process.exit(6);
     }
 
     const pageCount = await ParaTranz.getStringsTotalPageCount();
     print("Page count: " + pageCount);
     for (let j = 1; j <= pageCount; j++) {
         print("\x1b[33m", `Page: ${j}`, "\x1b[0m");
-        await handleStrings(await getStringsToTranslate(j));
+        await handleStrings(await ParaTranz.getStringsToTranslate(j), DeepL, Paradox);
     }
-    
+
     // Force exit because, I don't know why 
     // it doesn't happen otherwise
-    process.exit(0); 
+    process.exit(0);
 };
 
 initApp();

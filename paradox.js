@@ -15,7 +15,7 @@ class Paradox {
         const base_path = `${this.GAME_PATH}/game/localization`;
 
         const paths = [this.SOURCE_LANG, this.TARGET_LANG];
-        
+
         for (const pathToBuild of paths) {
             const path = `${base_path}/${pathToBuild}`;
             await this.getFilesFromPath(path, pathToBuild);
@@ -29,13 +29,13 @@ class Paradox {
             }
         }
     };
-    
+
     async getFilesFromPath(absolute_path, lang) {
-        if (! Array.isArray(this.#paths[lang])) {
+        if (!Array.isArray(this.#paths[lang])) {
             this.#paths[lang] = [];
         }
 
-        const directory = await fs.readdir(absolute_path, {withFileTypes: true});
+        const directory = await fs.readdir(absolute_path, { withFileTypes: true });
 
         for (const dirEnt of directory) {
             if (dirEnt.isFile()) {
@@ -51,21 +51,17 @@ class Paradox {
     };
 
     async loadFileFromPath(path, lang) {
-        try {
-            const file = await fs.readFile(path, {encoding: "utf8"});
-            const fileLines = file.split("\n");
+        const file = await fs.readFile(path, { encoding: "utf8" });
+        const fileLines = file.split("\n");
 
-            const translation_obj = fileLines
-                .map((line) => line.trimStart())
-                .map((line) => ({
-                    key: line.split(" ")[0],
-                    translation: line.split("\"")[1]
-                }));
+        const translation_obj = fileLines
+            .map((line) => line.trimStart())
+            .map((line) => ({
+                key: line.split(" ")[0],
+                translation: line.split("\"")[1]
+            }));
 
-            this.#translations[lang][path.split(this.GAME_PATH)[1]] = translation_obj;
-        } catch (e) {
-            console.error(e);
-        }
+        this.#translations[lang][path.split(this.GAME_PATH)[1]] = translation_obj;
     };
 
     getOfficialTranslation(filename, key, original_text) {
@@ -74,20 +70,20 @@ class Paradox {
         filename = filename.replace(`replace/${this.SOURCE_LANG}`, "");
 
         const source_translations = this.#translations
-            [this.SOURCE_LANG]
-            [Object.keys(this.#translations[this.SOURCE_LANG]).find((file) => file.endsWith(filename))];
+        [this.SOURCE_LANG]
+        [Object.keys(this.#translations[this.SOURCE_LANG]).find((file) => file.endsWith(filename))];
 
         const target_filename = filename.replaceAll(this.SOURCE_LANG, this.TARGET_LANG);
         const target_translations = this.#translations
-            [this.TARGET_LANG]
-            [Object.keys(this.#translations[this.TARGET_LANG]).find((file) => file.endsWith(target_filename))];
+        [this.TARGET_LANG]
+        [Object.keys(this.#translations[this.TARGET_LANG]).find((file) => file.endsWith(target_filename))];
 
         if (source_translations === undefined || target_translations === undefined) {
             return false;
         }
 
         const source = source_translations.find((el) => el.key.includes(key) && el.translation === original_text);
-        
+
         if (source === undefined) {
             // Means there is no translation for this key with the exact original text
             return false;
@@ -125,7 +121,7 @@ class Paradox {
         return gameKeywords;
     }
 
-    copyGameKeyword (string) {
+    copyGameKeyword(string) {
         const extractedKeywords = this.extractGameKeywords(string);
 
         let str = string;
@@ -133,15 +129,15 @@ class Paradox {
             str = str.split(keyword).join("");
         }
 
-        
+
         if (str.length === 0 || str === " ") {
             return true;
         }
 
-        if (! string.includes(" ") &&
-            ((string.startsWith("$") && string.endsWith("$")) 
-            || (string.startsWith("[") && string.endsWith("]")))
-            ) {
+        if (!string.includes(" ") &&
+            ((string.startsWith("$") && string.endsWith("$"))
+                || (string.startsWith("[") && string.endsWith("]")))
+        ) {
             return true;
         }
 
@@ -153,20 +149,20 @@ class Paradox {
             path = path.split("/game/localization/english/")[1];
         }
 
-        if (! path.startsWith("/")) {
-            path = "/game/localization/english/" + path;  
+        if (!path.startsWith("/")) {
+            path = "/game/localization/english/" + path;
         }
 
         path = path.replaceAll("english", TARGET_LANG);
-        
+
         try {
-            const file = await fs.readFile(PARADOX_GAME_PATH + path, {encoding: "utf8"});
+            const file = await fs.readFile(PARADOX_GAME_PATH + path, { encoding: "utf8" });
             if (file === undefined) {
                 return false;
             }
 
             const fileLines = file.split("\n");
-            
+
 
 
             const line = fileLines.find((el) => el.includes(key));
