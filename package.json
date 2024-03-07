@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/Jeydolen/ParantranzHelper/issues"
   },
-  "homepage": "https://github.com/Jeydolen/ParantranzHelper#readme"
+  "homepage": "https://github.com/Jeydolen/ParantranzHelper#readme",
+  "dependencies": {
+    "yaml": "^2.3.4"
+  }
 }

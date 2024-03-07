@@ -90,7 +90,7 @@ class ParaTranz {
     getStringsForPage(page, file_id) {
         // 1000 is the maximum item count per page
         const itemCount = 1000;
-        let url = `/projects/${this.PARATRANZ_PROJECT_ID}/strings?stage=0&page=${page}&pageSize=${itemCount}`;
+        let url = `/projects/${this.PARATRANZ_PROJECT_ID}/strings?stage=1&page=${page}&pageSize=${itemCount}`;
 
         if (file_id !== undefined) {
             url += "&file=" + file_id;

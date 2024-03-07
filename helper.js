@@ -6,12 +6,12 @@ const {
     Readline
 } = require("./config");
 
-const handleString = async (stringToTranslate, DeepL, Paradox) => {
+const handleString = async (stringToTranslate, DeepL, Paradox, ParaTranz) => {
     const { key, original, id } = stringToTranslate;
     const filename = stringToTranslate.file.name;
 
     if (USE_PARADOX_GAME_FILES) {
-        const translation = Paradox.getOfficialTranslation(filename, key, original);
+        const translation = await Paradox.getOfficialTranslation(filename, key, original);
         if (translation) {
             print("Original: ", original, "\ntranslation: ", translation);
 
@@ -92,7 +92,7 @@ const handleFileList = (FILE_ARRAY, filename) => {
 
 const cached_strings = {};
 const filtered_strings = [];
-const handleStrings = async (strings, DeepL, Paradox) => {
+const handleStrings = async (strings, DeepL, Paradox, ParaTranz) => {
     if (strings === undefined) {
         console.error("There is an error with the ParaTranz API, please check your configuration or try again later");
         process.exit(6);
@@ -122,20 +122,20 @@ const handleStrings = async (strings, DeepL, Paradox) => {
         }
 
         // String cache
-        if (Object.keys(cached_strings).includes(original)) {
-            print(original, " already translated: ", cached_strings[original]);
-            await ParaTranz.putTranslation(id, cached_strings[original]);
-            continue;
-        }
+        // if (Object.keys(cached_strings).includes(original)) {
+        //     print(original, " already translated: ", cached_strings[original]);
+        //     await ParaTranz.putTranslation(id, cached_strings[original]);
+        //     continue;
+        // }
 
         // Game keyword
-        if (Paradox !== undefined && Paradox.copyGameKeyword(original)) {
-            print(original, "is a game keyword automatic translation");
-            await ParaTranz.putTranslation(id, original);
-            continue;
-        }
+        // if (Paradox !== undefined && Paradox.copyGameKeyword(original)) {
+        //     print(original, "is a game keyword automatic translation");
+        //     await ParaTranz.putTranslation(id, original);
+        //     continue;
+        // }
 
-        await handleString(stringToTranslate, DeepL, Paradox);
+        await handleString(stringToTranslate, DeepL, Paradox, ParaTranz);
     }
 
 };
@@ -153,7 +153,7 @@ const initApp = async () => {
     print("Page count: " + pageCount);
     for (let j = 1; j <= pageCount; j++) {
         print("\x1b[33m", `Page: ${j}`, "\x1b[0m");
-        await handleStrings(await ParaTranz.getStringsToTranslate(j), DeepL, Paradox);
+        await handleStrings(await ParaTranz.getStringsToTranslate(j), DeepL, Paradox, ParaTranz);
     }
 
     // Force exit because, I don't know why 

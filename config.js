@@ -98,11 +98,11 @@ async function getStartupConfiguration() {
 
     if (USE_PARADOX_GAME_FILES) {
         const paradox = new Paradox(PARADOX_GAME_PATH, SOURCE_LANG, TARGET_LANG);
-        const files_loaded = await paradox.loadGameFiles();
-        if (files_loaded) {
-            console.log("Paradox folder is unavailable, please check your configuration or retry later !");
-            process.exit(3);
-        }
+        // const files_loaded = await paradox.loadGameFiles();
+        // if (files_loaded) {
+        //     console.log("Paradox folder is unavailable, please check your configuration or retry later !");
+        //     process.exit(3);
+        // }
 
         export_object.Paradox = paradox;
     }

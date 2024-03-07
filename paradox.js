@@ -1,4 +1,5 @@
 const fs = require("node:fs/promises");
+const YAML = require('yaml');
 
 class Paradox {
     #paths = {};
@@ -21,7 +22,7 @@ class Paradox {
             await this.getFilesFromPath(path, pathToBuild);
         };
 
-        for (const lang of Object.keys(this.#paths)) {
+        for (const lang of paths) {
             this.#translations[lang] = {};
 
             for (const path of this.#paths[lang]) {
@@ -29,6 +30,32 @@ class Paradox {
             }
         }
     };
+
+    async loadGameFile(file_path) {
+        const paths = [this.SOURCE_LANG, this.TARGET_LANG];
+
+        for (const lang of Object.keys(paths)) {
+            if (!this.#translations[lang]) {
+                this.#translations[lang] = {};
+            }
+
+            if (this.#translations[lang][file_path.split(this.GAME_PATH)[1]]) {
+                return;
+            }
+        }
+
+        const base_path = `${this.GAME_PATH}/game/localization`;
+
+        for (const pathToBuild of paths) {
+            file_path = file_path.replace(`${this.SOURCE_LANG}`, "#");
+            file_path = file_path.replace(`${this.TARGET_LANG}`, "#");
+
+            file_path = file_path.replace("#", pathToBuild);
+
+            const path = `${base_path}/${pathToBuild}/${file_path}`;
+            await this.loadFileFromPath(path, pathToBuild);
+        };
+    }
 
     async getFilesFromPath(absolute_path, lang) {
         if (!Array.isArray(this.#paths[lang])) {
@@ -51,11 +78,26 @@ class Paradox {
     };
 
     async loadFileFromPath(path, lang) {
-        const file = await fs.readFile(path, { encoding: "utf8" });
+        if (!this.#translations[lang]) {
+            this.#translations[lang] = {};
+        }
+
+        let file;
+        try {
+            file = await fs.readFile(path, { encoding: "utf8" });
+        } catch (e) {
+            if (e.code === "ENOENT") {
+                return;
+            }
+
+            console.log(e)
+            return;
+        }
+
         const fileLines = file.split("\n");
 
         const translation_obj = fileLines
-            .map((line) => line.trimStart())
+            .map((line) => line.trim())
             .map((line) => ({
                 key: line.split(" ")[0],
                 translation: line.split("\"")[1]
@@ -64,11 +106,16 @@ class Paradox {
         this.#translations[lang][path.split(this.GAME_PATH)[1]] = translation_obj;
     };
 
-    getOfficialTranslation(filename, key, original_text) {
+    async getOfficialTranslation(filename, key, original_text) {
         // /replace folder in ParaTranz project is for replacing partly official translation
         // by doing .replace() we filter them and check for exact text to replace not already translated one
         filename = filename.replace(`replace/${this.SOURCE_LANG}`, "");
 
+        // We need to only get first part of the key because depending on translation yaml
+        // There is sometimes nothing defined after ":"
+        key = key.split(":")[0];
+
+        await this.loadGameFile(filename);
         const source_translations = this.#translations
         [this.SOURCE_LANG]
         [Object.keys(this.#translations[this.SOURCE_LANG]).find((file) => file.endsWith(filename))];
@@ -90,11 +137,21 @@ class Paradox {
         }
 
         const target = target_translations.find((el) => el.key.includes(key));
-
-        return target.translation || false;
+        if (target && target.translation) {
+            const text = target.translation;
+            if (text.includes("FR_du_Char_Pi") || text.includes("FR_au_Char_Pi") || text.includes("FR_le_Char_Pi")) {
+                return text;
+            }
+        }
+        return false;
+        return target?.translation ?? false;
     }
 
     extractGameKeywords(string) {
+        const words = string.split(" ");
+        for (const word of words) {
+            const isGameKeyword = (word.startsWith("[") && word.endsWith("]"));
+        }
         const gameKeywords = [];
         let gameKeyword = "";
         let isGameKeywordChar = false;
